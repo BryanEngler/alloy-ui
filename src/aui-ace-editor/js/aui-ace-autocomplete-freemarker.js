@@ -6,15 +6,9 @@
  */
 
 var Lang = A.Lang,
-    Base = A.AceEditor.AutoCompleteBase,
 
     MATCH_DIRECTIVES = 0,
     MATCH_VARIABLES = 1,
-
-    _NAME = 'aui-ace-autocomplete-freemarker',
-
-    DIRECTIVES_MATCHER = 'directivesMatcher',
-    VARIABLES_MATCHER = 'variablesMatcher',
 
     /**
      * A base class for Freemarker plugin.
@@ -25,7 +19,7 @@ var Lang = A.Lang,
      *     properties.
      * @constructor
      */
-    Freemarker = A.Base.create(_NAME, A.AceEditor.TemplateProcessor, [
+    Freemarker = A.Base.create('aui-ace-autocomplete-freemarker', A.AceEditor.TemplateProcessor, [
 ], {
 
         /**
@@ -47,7 +41,7 @@ var Lang = A.Lang,
             if ((matchIndex = content.lastIndexOf('<')) >= 0) {
                 content = content.substring(matchIndex);
 
-                if (instance.get(DIRECTIVES_MATCHER).test(content)) {
+                if (instance.get('directivesMatcher').test(content)) {
                     match = {
                         content: content.substring(2),
                         start: matchIndex,
@@ -58,7 +52,7 @@ var Lang = A.Lang,
             else if ((matchIndex = content.lastIndexOf('$')) >= 0) {
                 content = content.substring(matchIndex);
 
-                if (instance.get(VARIABLES_MATCHER).test(content)) {
+                if (instance.get('variablesMatcher').test(content)) {
                     match = {
                         content: content.substring(2),
                         start: matchIndex,
@@ -78,7 +72,7 @@ var Lang = A.Lang,
          * @type String
          * @static
          */
-        NAME: _NAME,
+        NAME: 'aui-ace-autocomplete-freemarker',
 
         /**
          * Static property provides a string to identify the namespace.
@@ -87,7 +81,7 @@ var Lang = A.Lang,
          * @type String
          * @static
          */
-        NS: _NAME,
+        NS: 'aui-ace-autocomplete-freemarker',
 
         /**
          * Static property used to define the default attribute

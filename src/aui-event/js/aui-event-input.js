@@ -24,11 +24,6 @@ DOM_EVENTS.paste = 1;
 
 var KeyMap = A.Event.KeyMap,
 
-    ACTIVE_ELEMENT = 'activeElement',
-    OWNER_DOCUMENT = 'ownerDocument',
-
-    STR_VALUE = 'value',
-
     _HANDLER_DATA_KEY = '~~aui|input|event~~',
     _INPUT_EVENT_TYPE = ['keydown', 'paste', 'drop', 'cut'],
     _SKIP_FOCUS_CHECK_MAP = {
@@ -95,7 +90,7 @@ A.Event.define('input', {
      * @param subscription
      * @param notifier
      */
-    detach: function(node, subscription, notifier) {
+    detach: function(node, subscription) {
         subscription._handler.detach();
     },
 
@@ -107,7 +102,7 @@ A.Event.define('input', {
      * @param subscription
      * @param notifier
      */
-    detachDelegate: function(node, subscription, notifier) {
+    detachDelegate: function(node, subscription) {
         A.Array.each(subscription._handles, function(handle) {
             var element = A.one(handle.evt.el);
             if (element) {
@@ -137,7 +132,7 @@ A.Event.define('input', {
         // Since cut, drop and paste events fires before the element is focused,
         // skip focus checking.
         if (_SKIP_FOCUS_CHECK_MAP[event.type] ||
-            (input.get(OWNER_DOCUMENT).get(ACTIVE_ELEMENT) === input)) {
+            (input.get('ownerDocument').get('activeElement') === input)) {
 
             if (KeyMap.isModifyingKey(event.keyCode)) {
                 if (subscription._timer) {
@@ -145,7 +140,7 @@ A.Event.define('input', {
                     subscription._timer = null;
                 }
 
-                valueBeforeKey = KeyMap.isKey(event.keyCode, 'WIN_IME') ? null : input.get(STR_VALUE);
+                valueBeforeKey = KeyMap.isKey(event.keyCode, 'WIN_IME') ? null : input.get('value');
 
                 subscription._timer = A.soon(
                     A.bind('_fireEvent', instance, subscription, notifier, event, valueBeforeKey)
@@ -155,7 +150,7 @@ A.Event.define('input', {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires an event.
      *
      * @method _fireEvent
      * @param subscription
@@ -165,12 +160,11 @@ A.Event.define('input', {
      * @protected
      */
     _fireEvent: function(subscription, notifier, event, valueBeforeKey) {
-        var instance = this,
-            input = event.target;
+        var input = event.target;
 
         subscription._timer = null;
 
-        if (input.get(STR_VALUE) !== valueBeforeKey) {
+        if (input.get('value') !== valueBeforeKey) {
             notifier.fire(event);
         }
     }

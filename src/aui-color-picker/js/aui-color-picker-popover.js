@@ -5,12 +5,7 @@
  * @submodule aui-color-picker-popover
  */
 
-var Lang = A.Lang,
-    ANode = A.Node,
-
-    getClassName = A.getClassName,
-
-    _NAME = 'color-picker-popover';
+var Lang = A.Lang;
 
 /**
  * A base class for `ColorPickerPopover`.
@@ -21,8 +16,10 @@ var Lang = A.Lang,
  * @param {Object} config Object literal specifying widget configuration
  *     properties.
  * @constructor
+ * @include http://alloyui.com/examples/color-picker/popover-markup.html
+ * @include http://alloyui.com/examples/color-picker/popover.js
  */
-var ColorPickerPopover = A.Base.create(_NAME, A.Popover, [
+var ColorPickerPopover = A.Base.create('color-picker-popover', A.Popover, [
     A.ColorPickerBase,
     A.WidgetAutohide,
     A.WidgetCssClass,
@@ -71,7 +68,7 @@ var ColorPickerPopover = A.Base.create(_NAME, A.Popover, [
      * @type {String}
      * @static
      */
-    NAME: _NAME,
+    NAME: 'color-picker-popover',
 
     /**
      * Static property provides a string to identify the namespace.
@@ -80,7 +77,7 @@ var ColorPickerPopover = A.Base.create(_NAME, A.Popover, [
      * @type {String}
      * @static
      */
-    NS: _NAME
+    NS: 'color-picker-popover'
 });
 
 A.ColorPickerPopover = ColorPickerPopover;

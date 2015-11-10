@@ -4,12 +4,7 @@
  * @module aui-widget-toolbars
  */
 
-var StdMod = A.WidgetStdMod,
-
-    BOUNDING_BOX = 'boundingBox',
-    TOOLBARS = 'toolbars',
-    SYNC_UI = 'syncUI',
-    TOOLBARS_CHANGE = 'toolbarsChange';
+var StdMod = A.WidgetStdMod;
 
 /**
  * A base class for Widget Toolbars.
@@ -49,6 +44,20 @@ WidgetToolbars.ATTRS = {
             footer: StdMod.AFTER,
             header: StdMod.BEFORE
         }
+    },
+
+    /**
+     * Collection of toolbar's header, body, and footer CSS classes.
+     *
+     * @attribute toolbarCssClass
+     * @type Object
+     */
+    toolbarCssClass: {
+        value: {
+            body: '',
+            footer: '',
+            header: ''
+        }
     }
 };
 
@@ -67,9 +76,9 @@ WidgetToolbars.prototype = {
 
         instance.toolbars = {};
 
-        A.after(instance._syncUIToolbars, instance, SYNC_UI);
+        A.after(instance._syncUIToolbars, instance, 'syncUI');
 
-        instance.after(TOOLBARS_CHANGE, instance._afterToolbarsChange);
+        instance.after('toolbarsChange', instance._afterToolbarsChange);
     },
 
     /**
@@ -89,6 +98,7 @@ WidgetToolbars.prototype = {
 
         if (!A.instanceOf(toolbar, A.Toolbar)) {
             toolbar = new A.Toolbar({
+                cssClass: this.get('toolbarCssClass.' + section) || '',
                 children: toolbar,
                 render: instance.getStdModNode(section, true)
             });
@@ -100,7 +110,7 @@ WidgetToolbars.prototype = {
 
         instance.setStdModContent(
             section,
-            toolbar.get(BOUNDING_BOX),
+            toolbar.get('boundingBox'),
             instance.get('toolbarPosition.' + section));
 
         instance._syncPrimaryButtonUI();
@@ -159,7 +169,7 @@ WidgetToolbars.prototype = {
      */
     _syncPrimaryButtonUI: function() {
         var instance = this,
-            primaryButtonNode = instance.get(BOUNDING_BOX).one(
+            primaryButtonNode = instance.get('boundingBox').one(
                 '.' + A.ButtonCore.CLASS_NAMES.PRIMARY);
 
         if (primaryButtonNode) {
@@ -177,7 +187,7 @@ WidgetToolbars.prototype = {
     _syncUIToolbars: function() {
         var instance = this;
 
-        instance._uiSetToolbars(this.get(TOOLBARS));
+        instance._uiSetToolbars(this.get('toolbars'));
     },
 
     /**

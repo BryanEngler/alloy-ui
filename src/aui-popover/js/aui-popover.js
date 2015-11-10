@@ -6,23 +6,9 @@
 
 var StdMod = A.WidgetStdMod,
 
-    OWNER_DOCUMENT = 'ownerDocument',
-
     getClassName = A.getClassName,
 
-    _SPACE = ' ',
-
-    ARROW = 'arrow',
-    BLOCK = 'block',
-    BOUNDING_BOX = 'boundingBox',
-    CLICK = 'click',
-    CONTENT = 'content',
-    CONTENT_BOX = 'contentBox',
-    DISPLAY = 'display',
-    NONE = 'none',
-    POPOVER = 'popover',
-
-    CSS_ARROW = getClassName(ARROW),
+    CSS_ARROW = getClassName('arrow'),
     CSS_POPOVER_BD = getClassName('popover-content'),
     CSS_POPOVER_FT = getClassName('popover-footer'),
     CSS_POPOVER_HD = getClassName('popover-title');
@@ -44,7 +30,7 @@ var StdMod = A.WidgetStdMod,
  * @include http://alloyui.com/examples/popover/basic-markup.html
  * @include http://alloyui.com/examples/popover/basic.js
  */
-A.Popover = A.Base.create(POPOVER, A.Widget, [
+A.Popover = A.Base.create('popover', A.Widget, [
     A.WidgetCssClass,
     A.WidgetPosition,
     A.WidgetStdMod,
@@ -56,6 +42,7 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
     A.WidgetPositionAlignSuggestion,
     A.WidgetPositionConstrain,
     A.WidgetStack,
+    A.WidgetTransition,
     A.WidgetTrigger
 ], {
 
@@ -68,8 +55,19 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
     initializer: function() {
         var instance = this;
 
-        A.after(instance._afterUiSetVisible, instance, '_uiSetVisible');
         A.after(instance._afterRenderBoxClassNames, instance, '_renderBoxClassNames');
+
+        this._resizeHandle = A.on('windowresize', A.bind(this._onResize, this));
+    },
+
+    /**
+     * Destructor lifecycle implementation for the `Popover` class.
+     *
+     * @method destructor
+     * @protected
+     */
+    destructor: function() {
+        this._resizeHandle.detach();
     },
 
     /**
@@ -80,7 +78,7 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
      */
     renderUI: function() {
         var instance = this,
-            boundingBox = instance.get(BOUNDING_BOX);
+            boundingBox = instance.get('boundingBox');
 
         boundingBox.append(A.Popover.TEMPLATES.arrow);
 
@@ -96,25 +94,39 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
      */
     _afterRenderBoxClassNames: function() {
         var instance = this,
-            contentBox = instance.get(CONTENT_BOX);
+            contentBox = instance.get('contentBox');
 
-        contentBox.removeClass(instance.getClassName(CONTENT));
+        contentBox.removeClass(instance.getClassName('content'));
+    },
+
+    /**
+     * Fired after the window is resized.
+     *
+     * @method _onResize
+     * @protected
+     */
+    _onResize: function() {
+        this.suggestAlignment();
     },
 
     /**
      * Fire after `boundingBox` style changes.
      *
-     * @method _afterUiSetVisible
+     * @method _uiSetVisible
      * @param val
      * @protected
      */
-    _afterUiSetVisible: function(val) {
+    _uiSetVisible: function(val) {
         var instance = this,
-            boundingBox = instance.get(BOUNDING_BOX);
+            boundingBox = instance.get('boundingBox');
 
-        boundingBox.setStyle(DISPLAY, val ? BLOCK : NONE);
+        instance._widgetUiSetVisible(val);
 
-        instance.suggestAlignment();
+        boundingBox.setStyle('display', val ? 'block' : 'none');
+
+        if (val) {
+            instance.suggestAlignment();
+        }
     },
 
     /**
@@ -125,8 +137,10 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
      * @protected
      */
     _getStdModTemplate: function(section) {
-        return A.Node.create(A.Popover.TEMPLATES[section], this._stdModNode.get(OWNER_DOCUMENT));
-    }
+        return A.Node.create(A.Popover.TEMPLATES[section], this._stdModNode.get('ownerDocument'));
+    },
+
+    _widgetUiSetVisible: A.Widget.prototype._uiSetVisible
 }, {
     /**
      * Static property provides a string to identify the CSS prefix.
@@ -135,7 +149,7 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
      * @type String
      * @static
      */
-    CSS_PREFIX: getClassName(POPOVER),
+    CSS_PREFIX: getClassName('popover'),
 
     /**
      * Static property used to define the default attribute
@@ -154,7 +168,7 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
          * @type String
          */
         triggerToggleEvent: {
-            value: CLICK
+            value: 'click'
         }
     },
 
@@ -166,9 +180,9 @@ A.Popover = A.Base.create(POPOVER, A.Widget, [
      * @static
      */
     TEMPLATES: {
-        header: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.HEADER] + _SPACE + CSS_POPOVER_HD + '"></div>',
-        body: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.BODY] + _SPACE + CSS_POPOVER_BD + '"></div>',
-        footer: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.FOOTER] + _SPACE + CSS_POPOVER_FT + '"></div>',
+        header: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.HEADER] + ' ' + CSS_POPOVER_HD + '"></div>',
+        body: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.BODY] + ' ' + CSS_POPOVER_BD + '"></div>',
+        footer: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.FOOTER] + ' ' + CSS_POPOVER_FT + '"></div>',
         arrow: '<div class="' + CSS_ARROW + '"></div>'
     }
 });

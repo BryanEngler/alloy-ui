@@ -1,10 +1,8 @@
 /**
- * Provides standard module support for toggle sivibility method through an
+ * Provides standard module support for toggle visibility method through an
  * extension.
  * @module aui-widget-toggle
  */
-
-var VISIBLE = 'visible';
 
 /**
  * Widget extension, which can be used to add toggle visibility support to the
@@ -28,10 +26,10 @@ WidgetToggle.prototype = {
         var instance = this;
 
         if (!A.Lang.isBoolean(visible)) {
-            visible = !instance.get(VISIBLE);
+            visible = !instance.get('visible');
         }
 
-        return instance.set(VISIBLE, visible);
+        return instance.set('visible', visible);
     }
 };
 

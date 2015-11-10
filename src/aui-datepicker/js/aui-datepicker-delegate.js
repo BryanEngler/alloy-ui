@@ -8,21 +8,15 @@
 var Lang = A.Lang,
     isString = Lang.isString,
 
-    _DOCUMENT = A.one(A.config.doc),
+    EVENT_ENTER_KEY = 'enterKey',
 
-    ACTIVE_INPUT = 'activeInput',
-    BLUR = 'blur',
-    CLICK = 'click',
-    CONTAINER = 'container',
-    DATE_SEPARATOR = 'dateSeparator',
-    DATEPICKER_SELECTION = 'datepickerSelection',
-    FOCUS = 'focus',
-    MASK = 'mask',
-    MOUSEDOWN = 'mousedown',
-    SELECTION_CHANGE = 'selectionChange',
-    TRIGGER = 'trigger',
-    VALUE_EXTRACTOR = 'valueExtractor',
-    VALUE_FORMATTER = 'valueFormatter';
+    _DOCUMENT = A.one(A.config.doc);
+
+/**
+ * Fired when then enter key is pressed on an input node.
+ *
+ * @event enterKey
+ */
 
 /**
  * A base class for `DatePickerDelegate`.
@@ -73,28 +67,43 @@ DatePickerDelegate.prototype = {
      */
     bindDelegateUI: function() {
         var instance = this,
-            container = instance.get(CONTAINER),
-            trigger = instance.get(TRIGGER);
+            container = instance.get('container'),
+            trigger = instance.get('trigger');
 
         instance._eventHandles = [
             container.delegate(
-                [FOCUS, MOUSEDOWN],
+                ['focus', 'mousedown'],
                 A.bind('_onceUserInteraction', instance), trigger),
 
             container.delegate(
-                BLUR,
+                'blur',
                 A.bind('_onUserInteractionRelease', instance), trigger),
 
             container.delegate(
-                CLICK,
-                A.bind('_onceUserInteractionRelease', instance), trigger)
+                'click',
+                A.bind('_onceUserInteractionRelease', instance), trigger),
+
+            container.delegate(
+                'key', A.bind('_handleTabKeyEvent', instance), 'tab', trigger)
+
         ];
 
+        instance.after(
+            'activeInputChange',
+            A.bind('_afterActiveInputChange', instance));
+
         instance.publish(
-            SELECTION_CHANGE, {
+            'selectionChange', {
                 defaultFn: instance._defSelectionChangeFn
             });
     },
+
+    /**
+     * Method not implemented.
+     *
+     * @method focusSelectedValue
+     */
+    focusSelectedValue: function() {},
 
     /**
      * Gets the selected dates.
@@ -105,8 +114,8 @@ DatePickerDelegate.prototype = {
      */
     getSelectedDates: function(node) {
         var instance = this,
-            activeInput = node || instance.get(ACTIVE_INPUT),
-            selectedDates = activeInput.getData(DATEPICKER_SELECTION);
+            activeInput = node || instance.get('activeInput'),
+            selectedDates = activeInput.getData('datepickerSelection');
 
         if (selectedDates) {
             return selectedDates;
@@ -124,7 +133,7 @@ DatePickerDelegate.prototype = {
      */
     getParsedDatesFromInputValue: function(opt_value) {
         var instance = this,
-            valueExtractor = instance.get(VALUE_EXTRACTOR),
+            valueExtractor = instance.get('valueExtractor'),
             parsedDates = valueExtractor.call(instance, opt_value);
 
         if (parsedDates) {
@@ -158,6 +167,27 @@ DatePickerDelegate.prototype = {
     },
 
     /**
+    * Fires when the 'activeInput' attribute changes.  The keydown listener is
+    * removed from the old active input and is attached to the new one.
+    *
+    * @method _afterActiveInputChange
+    * @param {EventFacade} event
+    * @protected
+    */
+    _afterActiveInputChange: function(event) {
+        var instance = this;
+
+        if (event.prevVal) {
+            event.prevVal.detach(
+                'keydown', instance._handleKeydownEvent, instance);
+        }
+
+        if (event.newVal) {
+            event.newVal.on('keydown', instance._handleKeydownEvent, instance);
+        }
+    },
+
+    /**
      * Default behavior for selection change.
      *
      * @method _defSelectionChangeFn
@@ -167,12 +197,12 @@ DatePickerDelegate.prototype = {
     _defSelectionChangeFn: function(event) {
         var instance = this,
             selection = event.newSelection,
-            activeInput = instance.get(ACTIVE_INPUT),
-            valueFormatter = instance.get(VALUE_FORMATTER);
+            activeInput = instance.get('activeInput'),
+            valueFormatter = instance.get('valueFormatter');
 
         valueFormatter.call(instance, selection);
 
-        activeInput.setData(DATEPICKER_SELECTION, selection);
+        activeInput.setData('datepickerSelection', selection);
     },
 
     /**
@@ -185,11 +215,36 @@ DatePickerDelegate.prototype = {
      */
     _formatDate: function(date) {
         var instance = this,
-            mask = instance.get(MASK);
+            mask = instance.get('mask');
 
         return A.Date.format(date, {
             format: mask
         });
+    },
+
+    /**
+    * Handles keydown events
+    *
+    * @method _handleKeydownEvent
+    * @param event
+    * @protected
+    */
+    _handleKeydownEvent: function(event) {
+        var instance = this;
+
+        if (event.isKey('enter')) {
+            instance.fire(EVENT_ENTER_KEY);
+        }
+    },
+
+    /**
+    * Handles tab key events
+    *
+    * @method _handleTabKeyEvent
+    * @protected
+    */
+    _handleTabKeyEvent: function() {
+        this.hide();
     },
 
     /**
@@ -219,6 +274,8 @@ DatePickerDelegate.prototype = {
 
         instance.useInputNodeOnce(event.currentTarget);
 
+        instance.focusSelectedValue();
+
         instance._userInteractionInProgress = false;
     },
 
@@ -246,10 +303,10 @@ DatePickerDelegate.prototype = {
     _valueExtractorFn: function() {
         return function(opt_value) {
             var instance = this,
-                activeInput = instance.get(ACTIVE_INPUT),
+                activeInput = instance.get('activeInput'),
                 activeInputValue = Lang.trim(opt_value || activeInput.val()),
-                dateSeparator = instance.get(DATE_SEPARATOR),
-                mask = instance.get(MASK),
+                dateSeparator = instance.get('dateSeparator'),
+                mask = instance.get('mask'),
                 dates;
 
             if (activeInputValue) {
@@ -278,8 +335,8 @@ DatePickerDelegate.prototype = {
     _valueFormatterFn: function() {
         return function(dates) {
             var instance = this,
-                activeInput = instance.get(ACTIVE_INPUT),
-                dateSeparator = instance.get(DATE_SEPARATOR),
+                activeInput = instance.get('activeInput'),
+                dateSeparator = instance.get('dateSeparator'),
                 values = [];
 
             A.Array.each(dates, function(date) {

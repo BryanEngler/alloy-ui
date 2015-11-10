@@ -7,39 +7,9 @@
 
 var Lang = A.Lang,
     AColor = A.Color,
-    ADo = A.Do,
     AWidget = A.Widget,
 
-    NAME = 'hsva-palette',
-
     getClassName = A.getClassName,
-
-    _DOT = '.',
-    _EMPTY = '',
-    _POUND = '#',
-    _SPACE = ' ',
-
-    BACKGROUND_COLOR = 'backgroundColor',
-    COLOR_TYPE_HSVA = 'HSVA',
-    COLOR_TYPE_RGBA = 'RGBA',
-    CONTENT_BOX = 'contentBox',
-    CONTROLS = 'controls',
-    DEFAULT_HEX_VALUE = 'ff0000ff',
-    DEFAULT_RGBA_COLOR = 'rgb(255, 0, 0, 0)',
-    HS_THUMB_CHANGE = 'hsThumbChange',
-    HSVA_INPUT_CHANGE = 'hsvaInputChange',
-    LENGTH = 'length',
-    OFFSET_HEIGHT = 'offsetHeight',
-    OPACITY = 'opacity',
-    OUT_TYPE_HEX = 'Hex',
-    PREFIX_ALPHA = '0',
-    RAIL_MOUSEDOWN = 'railMouseDown',
-    RGB_INPUT_CHANGE = 'rgbInputChange',
-    SLIDE_START = 'slideStart',
-    STRINGS = 'strings',
-    TO = 'to',
-    VALUE = 'value',
-    VALUE_CHANGE = 'valueChange',
 
     MIN_ALPHA = 0,
 
@@ -50,19 +20,11 @@ var Lang = A.Lang,
 
     MAXLEN_HEX = 8,
 
-    PADDING_HEX_LEN_3 = 'fffff',
-    PADDING_HEX_LEN_6 = 'ff',
-
-    SUFFIX_HEX = '-hex',
-    SUFFIX_ALPHA = '-a',
-
-    TYPE_ALPHA = 'alpha',
-    TYPE_HEX = 'hex',
-
     CSS_CONTAINER_ALPHA = getClassName('hsv-container-alpha'),
 
     CSS_ALPHA_CANVAS = getClassName('hsv-alpha-canvas'),
     CSS_ALPHA_SLIDER_CONTAINER = getClassName('hsv-alpha-slider-container'),
+    CSS_ALPHA_SLIDER_WRAPPER = getClassName('hsv-alpha-slider-wrapper'),
     CSS_ALPHA_THUMB = getClassName('hsv-alpha-thumb'),
     CSS_ALPHA_THUMB_IMAGE = getClassName('hsv-alpha-image'),
 
@@ -77,12 +39,17 @@ var Lang = A.Lang,
      *      properties.
      * @constructor
      */
-    HSVAPalette = A.Base.create(NAME, A.HSVPalette, [], {
+    HSVAPalette = A.Base.create('hsva-palette', A.HSVPalette, [], {
+        CSS_VALUE_RIGHT_SIDE_CONTAINER: 'col-sm-8 col-xs-8',
+
         TPL_ALPHA_CANVAS: '<span class="' + CSS_ALPHA_CANVAS + '"></span>',
 
-        TPL_ALPHA_SLIDER_CONTAINER: '<div class="' + CSS_ALPHA_SLIDER_CONTAINER + '"><div>',
+        TPL_ALPHA_SLIDER_WRAPPER: '<div class="col-sm-2 col-xs-2 ' +
+            CSS_ALPHA_SLIDER_WRAPPER + '"><div class="' +
+            CSS_ALPHA_SLIDER_CONTAINER + '"></div></div>',
 
-        TPL_ALPHA_THUMB: '<span class="' + CSS_ALPHA_THUMB + '"><span class="' + CSS_ALPHA_THUMB_IMAGE + '"></span></span>',
+        TPL_ALPHA_THUMB: '<span class="' + CSS_ALPHA_THUMB + '"><span class="' + CSS_ALPHA_THUMB_IMAGE +
+            '"></span></span>',
 
         /**
          * Construction logic executed during `HSVAPalette` instantiation.
@@ -96,9 +63,9 @@ var Lang = A.Lang,
 
             instance.set('fieldValidator.hex', REGEX_HEX_COLOR_ALPHA);
 
-            instance.after(HS_THUMB_CHANGE, instance._afterHsThumbChangeFn, instance);
-            instance.after(HSVA_INPUT_CHANGE, instance._afterHSVAInputChange, instance);
-            instance.after(RGB_INPUT_CHANGE, instance._afterRGBInputChange, instance);
+            instance.after('selectedChange', instance._updateAlphaValue, instance);
+
+            instance.onceAfter('render', instance._updateAlphaValue, instance);
         },
 
         /**
@@ -117,69 +84,17 @@ var Lang = A.Lang,
                 alphaDec = parseInt(alpha, 16);
 
             instance._alphaSlider.set(
-                VALUE,
+                'value',
                 MAX_ALPHA - alphaDec, {
                     src: AWidget.UI_SRC
                 }
             );
 
-            instance._alphaSliderContainer.setStyle(BACKGROUND_COLOR, hexColor);
+            instance._alphaSliderContainer.setStyle('backgroundColor', hexColor);
 
-            instance._resultView.setStyle(OPACITY, alphaDec / MAX_ALPHA);
+            instance._resultView.setStyle('opacity', alphaDec / MAX_ALPHA);
 
-            if (instance.get(CONTROLS)) {
-                instance._setFieldValue(instance._aContainer, alphaDec);
-            }
-        },
-
-        /**
-         * Sets alpha slider container style after thumb position change.
-         *
-         * @method _afterHsThumbChangeFn
-         * @param {EventFacade} event
-         * @protected
-         */
-        _afterHsThumbChangeFn: function(event) {
-            var instance = this;
-
-            instance._alphaSliderContainer.setStyle(BACKGROUND_COLOR, event.hexColor);
-        },
-
-        /**
-         * Sets alpha slider style, position, and results view after HSVA input
-         * `valueChange`.
-         *
-         * @method _afterHSVAInputChange
-         * @param {EventFacade} event
-         * @protected
-         */
-        _afterHSVAInputChange: function(event) {
-            var instance = this,
-                alpha = instance._getFieldValue(instance._aContainer);
-
-            instance._alphaSlider.set(
-                VALUE,
-                MAX_ALPHA - alpha, {
-                    src: AWidget.UI_SRC
-                }
-            );
-
-            instance._alphaSliderContainer.setStyle(BACKGROUND_COLOR, event.hexColor);
-
-            instance._resultView.setStyle(OPACITY, alpha / MAX_ALPHA);
-        },
-
-        /**
-         * Sets alpha slider container style after RGB input `valueChange`.
-         *
-         * @method _afterRGBInputChange
-         * @param {EventFacade} event
-         * @protected
-         */
-        _afterRGBInputChange: function(event) {
-            var instance = this;
-
-            instance._alphaSliderContainer.setStyle(BACKGROUND_COLOR, event.hexColor);
+            instance._setFieldValue(instance._aContainer, alphaDec);
         },
 
         /**
@@ -196,9 +111,9 @@ var Lang = A.Lang,
             var instance = this,
                 alpha;
 
-            alpha = 255 - instance._alphaSlider.get(VALUE);
+            alpha = 255 - instance._alphaSlider.get('value');
 
-            return AColor.fromArray([r, g, b, alpha], COLOR_TYPE_RGBA);
+            return AColor.fromArray([r, g, b, alpha], 'RGBA');
         },
 
         /**
@@ -213,9 +128,15 @@ var Lang = A.Lang,
          */
         _calculateRGBColor: function(hue, saturation, value) {
             var instance = this,
-                alpha = 255 - instance._alphaSlider.get(VALUE);
+                alpha = 255 - instance._alphaSlider.get('value');
 
-            return instance._calculateRGBA(hue, saturation, value, alpha);
+            // TODO: Use feature checking instead
+            if (A.UA.ie === 8) {
+                return instance._calculateRGB(hue, saturation, value, alpha);
+            }
+            else {
+                return instance._calculateRGBA(hue, saturation, value, alpha);
+            }
         },
 
         /**
@@ -230,7 +151,7 @@ var Lang = A.Lang,
          * @protected
          */
         _calculateRGBA: function(hue, saturation, value, alpha) {
-            var rgbColor = DEFAULT_RGBA_COLOR,
+            var rgbColor = 'rgb(255, 0, 0, 0)',
                 hsvColor,
                 tmp;
 
@@ -244,9 +165,9 @@ var Lang = A.Lang,
                 if (Lang.toInt(alpha) === 0) {
                     tmp = AColor.toArray(rgbColor);
 
-                    tmp[3] = PREFIX_ALPHA;
+                    tmp[3] = '0';
 
-                    rgbColor = AColor.fromArray(tmp, COLOR_TYPE_RGBA);
+                    rgbColor = AColor.fromArray(tmp, 'RGBA');
                 }
             }
 
@@ -264,24 +185,23 @@ var Lang = A.Lang,
          * @protected
          */
         _convertColor: function(value, from, to) {
-            var instance = this,
-                out,
+            var out,
                 outputHex;
 
-            outputHex = (to === TYPE_HEX);
+            outputHex = (to === 'hex');
 
-            if (from === TYPE_HEX) {
-                value = _POUND + value;
+            if (from === 'hex') {
+                value = '#' + value;
             }
 
             if (outputHex) {
-                to = OUT_TYPE_HEX;
+                to = 'Hex';
             }
             else {
                 to = (to + 'a').toUpperCase();
             }
 
-            out = AColor[TO + to](value);
+            out = AColor['to' + to](value);
 
             if (outputHex) {
                 out = out.substr(1);
@@ -303,7 +223,7 @@ var Lang = A.Lang,
 
             className = A.HSVAPalette.superclass._getContainerClassName.call(instance);
 
-            className += _SPACE + CSS_CONTAINER_ALPHA;
+            className += ' ' + CSS_CONTAINER_ALPHA;
 
             return className;
         },
@@ -325,7 +245,7 @@ var Lang = A.Lang,
             alpha = parseInt(rgbColorArray[3], 10).toString(16);
 
             if (alpha.length === 1) {
-                alpha = PREFIX_ALPHA + alpha;
+                alpha = '0' + alpha;
             }
 
             result = hexColor + alpha;
@@ -342,9 +262,7 @@ var Lang = A.Lang,
          * @protected
          */
         _getHSVArray: function(hsv) {
-            var instance = this;
-
-            return AColor.toArray(hsv, COLOR_TYPE_HSVA);
+            return AColor.toArray(hsv, 'HSVA');
         },
 
         /**
@@ -359,7 +277,7 @@ var Lang = A.Lang,
                 contentBox,
                 slider;
 
-            contentBox = instance.get(CONTENT_BOX),
+            contentBox = instance.get('contentBox'),
 
             slider = new A.Slider({
                 axis: 'y',
@@ -372,16 +290,16 @@ var Lang = A.Lang,
 
             slider.render(instance._alphaSliderContainer);
 
-            alphaThumbHeight = contentBox.one(_DOT + CSS_ALPHA_THUMB_IMAGE).get(OFFSET_HEIGHT);
+            alphaThumbHeight = contentBox.one('.' + CSS_ALPHA_THUMB_IMAGE).get('offsetHeight');
 
             slider.set(
-                LENGTH,
-                instance._alphaSliderContainer.get(OFFSET_HEIGHT) + (alphaThumbHeight / 2)
+                'length',
+                instance._alphaSliderContainer.get('offsetHeight') + (alphaThumbHeight / 2)
             );
 
-            slider.on([SLIDE_START, RAIL_MOUSEDOWN], instance._setHSContainerXY, instance);
+            slider.on(['slideStart', 'railMouseDown'], instance._setHSContainerXY, instance);
 
-            slider.on(VALUE_CHANGE, instance._onAlphaChange, instance);
+            slider.on('valueChange', instance._onAlphaChange, instance);
 
             instance._alphaSlider = slider;
         },
@@ -411,12 +329,12 @@ var Lang = A.Lang,
             var instance = this;
 
             return {
-                label: instance.get(STRINGS).hex,
+                label: instance.get('strings').hex,
                 maxlength: MAXLEN_HEX,
-                suffix: SUFFIX_HEX,
-                type: TYPE_HEX,
-                unit: _EMPTY,
-                value: DEFAULT_HEX_VALUE
+                suffix: '-hex',
+                type: 'hex',
+                unit: '',
+                value: 'ff0000ff'
             };
         },
 
@@ -432,10 +350,10 @@ var Lang = A.Lang,
             var padding = '';
 
             if (hex.length === 3) {
-                padding = PADDING_HEX_LEN_3;
+                padding = 'fffff';
             }
             else if (hex.length === 6) {
-                padding = PADDING_HEX_LEN_6;
+                padding = 'ff';
             }
 
             return (hex += padding);
@@ -464,7 +382,7 @@ var Lang = A.Lang,
             if (event.src !== AWidget.UI_SRC) {
                 alpha = event.newVal;
 
-                instance._resultView.setStyle(OPACITY, 1 - (alpha / MAX_ALPHA));
+                instance._resultView.setStyle('opacity', 1 - (alpha / MAX_ALPHA));
 
                 thumbXY = instance._colorThumb.getXY();
 
@@ -473,20 +391,17 @@ var Lang = A.Lang,
 
                 hue = instance._calculateHue(x);
                 saturation = instance._calculateSaturation(y);
-                value = MAX_VALUE - instance._valueSlider.get(VALUE);
+                value = MAX_VALUE - instance._valueSlider.get('value');
 
                 rgbColor = instance._calculateRGBA(hue, saturation, value, MAX_ALPHA - alpha);
                 rgbColorArray = AColor.toArray(rgbColor);
                 hexValue = instance._getHexValue(AColor.toHex(rgbColor), rgbColorArray);
 
                 instance._setFieldValue(instance._outputContainer, hexValue);
-
-                if (instance.get(CONTROLS)) {
-                    instance._setFieldValue(instance._aContainer, MAX_ALPHA - alpha);
-                    instance._setFieldValue(instance._rContainer, rgbColorArray[0]);
-                    instance._setFieldValue(instance._gContainer, rgbColorArray[1]);
-                    instance._setFieldValue(instance._bContainer, rgbColorArray[2]);
-                }
+                instance._setFieldValue(instance._aContainer, MAX_ALPHA - alpha);
+                instance._setFieldValue(instance._rContainer, rgbColorArray[0]);
+                instance._setFieldValue(instance._gContainer, rgbColorArray[1]);
+                instance._setFieldValue(instance._bContainer, rgbColorArray[2]);
             }
         },
 
@@ -497,10 +412,14 @@ var Lang = A.Lang,
          * @protected
          */
         _renderAlphaSliderContainer: function() {
-            var instance = this;
+            var instance = this,
+                sliderWrapper;
 
-            instance._alphaSliderContainer = instance._viewContainer.appendChild(
-                instance.TPL_ALPHA_SLIDER_CONTAINER
+            sliderWrapper = A.Node.create(this.TPL_ALPHA_SLIDER_WRAPPER);
+            instance._valueSliderWrapper.insert(sliderWrapper, 'after');
+
+            instance._alphaSliderContainer = sliderWrapper.one(
+                '.' + CSS_ALPHA_SLIDER_CONTAINER
             );
         },
 
@@ -513,15 +432,17 @@ var Lang = A.Lang,
         _renderFields: function() {
             var instance = this;
 
-            A.HSVAPalette.superclass._renderFields.call(instance);
+            A.HSVAPalette.superclass._renderFields.apply(instance, arguments);
 
             instance._aContainer = instance._renderField(
                 instance._labelValueHSVContainer, {
-                    label: instance.get(STRINGS).a,
+                    label: instance.get('strings').a,
+                    max: 255,
                     maxlength: 3,
-                    suffix: SUFFIX_ALPHA,
-                    type: TYPE_ALPHA,
-                    unit: _EMPTY,
+                    min: 0,
+                    suffix: '-a',
+                    type: 'alpha',
+                    unit: '',
                     value: MAX_ALPHA
                 }
             );
@@ -539,6 +460,29 @@ var Lang = A.Lang,
             A.HSVAPalette.superclass._renderViewContainerContent.call(instance);
 
             instance._renderAlphaSliderContainer();
+        },
+
+        /**
+         * Updates the alpha slider's value according to the currently selected
+         * hex color.
+         *
+         * @method _updateAlphaValue
+         * @protected
+         */
+        _updateAlphaValue: function() {
+            var alpha = this._getFieldValue(this._aContainer),
+                hex = '#' + this.get('selected').substr(0, 6);
+
+            this._alphaSlider.set(
+                'value',
+                MAX_ALPHA - alpha, {
+                    src: AWidget.UI_SRC
+                }
+            );
+
+            this._alphaSliderContainer.setStyle('backgroundColor', hex);
+
+            this._resultView.setStyle('opacity', alpha / MAX_ALPHA);
         }
     }, {
 
@@ -549,7 +493,7 @@ var Lang = A.Lang,
          * @type {String}
          * @static
          */
-        NAME: NAME,
+        NAME: 'hsva-palette',
 
         /**
          * Static property provides a string to identify the namespace.
@@ -558,7 +502,7 @@ var Lang = A.Lang,
          * @type {String}
          * @static
          */
-        NS: NAME
+        NS: 'hsva-palette'
     });
 
 A.HSVAPalette = HSVAPalette;

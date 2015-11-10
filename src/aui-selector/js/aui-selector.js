@@ -4,27 +4,25 @@
  * @module aui-selector
  */
 
-var Lang = A.Lang,
-    isString = Lang.isString,
+var SELECTOR = A.Selector,
 
-    SELECTOR = A.Selector,
-
-    getClassName = A.getClassName,
-
+    CSS_BOOTSTRAP_SR_ONLY = A.getClassName('sr-only'),
     CSS_HIDE = A.getClassName('hide'),
-    REGEX_HIDDEN_CLASSNAMES = new RegExp(CSS_HIDE);
+    REGEX_CLIP_RECT_ZERO = new RegExp(/rect\((0(px)?(,)?(\s)?){4}\)/i),
+    REGEX_HIDDEN_CLASSNAMES = new RegExp(CSS_HIDE),
+    REGEX_SR_ONLY_CLASSNAMES = new RegExp(CSS_BOOTSTRAP_SR_ONLY);
 
 SELECTOR._isNodeHidden = function(node) {
     var width = node.offsetWidth;
     var height = node.offsetHeight;
-    var ignore = node.nodeName.toLowerCase() == 'tr';
+    var ignore = node.nodeName.toLowerCase() === 'tr';
     var className = node.className;
     var nodeStyle = node.style;
 
     var hidden = false;
 
     if (!ignore) {
-        if (width == 0 && height == 0) {
+        if (width === 0 && height === 0) {
             hidden = true;
         }
         else if (width > 0 && height > 0) {
@@ -32,15 +30,16 @@ SELECTOR._isNodeHidden = function(node) {
         }
     }
 
-    hidden = hidden || (nodeStyle.display == 'none' || nodeStyle.visibility == 'hidden') || REGEX_HIDDEN_CLASSNAMES.test(
-        className);
+    hidden = hidden || (nodeStyle.display === 'none' || nodeStyle.visibility === 'hidden') ||
+        (nodeStyle.position === 'absolute' && REGEX_CLIP_RECT_ZERO.test(nodeStyle.clip)) ||
+        REGEX_HIDDEN_CLASSNAMES.test(className) || REGEX_SR_ONLY_CLASSNAMES.test(className);
 
     return hidden;
 };
 
 var testNodeType = function(type) {
     return function(node) {
-        return node.type == type;
+        return node.type === type;
     };
 };
 

@@ -10,41 +10,8 @@ var AArray = A.Array,
     Lang = A.Lang,
 
     getClassName = A.getClassName,
-
-    _NAME = 'color-picker-inline',
-
-    _DATA_INDEX = 'data-index',
-    _DATA_VALUE = 'data-value',
-    _DEFAULT_COLOR = '#FFF',
     _DEFAULT_COLUMNS = 10,
-    _DEFAULT_HSV_COLOR = 'FF0000',
-    _DOT = '.',
-    _EMPTY = '',
     _INVALID_COLOR_INDEX = -1,
-    _POUND = '#',
-
-    BOUNDING_BOX = 'boundingBox',
-    CLICK = 'click',
-    CLICKOUTSIDE = 'clickoutside',
-    COLOR = 'color',
-    COLOR_CHANGE = 'colorChange',
-    COLOR_PALETTE = 'colorPalette',
-    CONTENT_BOX = 'contentBox',
-    HSV_PALETTE = 'hsvPalette',
-    ITEMS = 'items',
-    RC_SRC = 'sourceRecentColor',
-    RECENT_COLORS = 'recentColors',
-    RENDER_COLOR_PALETTE = 'renderColorPalette',
-    RENDER_HSV_PALETTE = 'renderHSVPalette',
-    SELECT = 'select',
-    SELECTED = 'selected',
-    SELECTED_CHANGE = 'selectedChange',
-    STRINGS = 'strings',
-    TRIGGER = 'trigger',
-    UNSELECT = 'unselect',
-    VISIBLE = 'visible',
-    VISIBLE_CHANGE = 'visibleChange',
-    Z_INDEX = 'zIndex',
 
     CSS_NO_COLOR = getClassName('color-picker-nocolor'),
     CSS_NO_COLOR_ICON = getClassName('color-picker-nocolor-icon'),
@@ -61,16 +28,16 @@ var AArray = A.Array,
  * @constructor
  */
 
-function ColorPickerBase(config) {}
+function ColorPickerBase() {}
 
 ColorPickerBase.prototype = {
-    TPL_HEADER_CONTENT: '<h3>{header}</h3>',
+    TPL_ACTIONS: '<div class="row ' + CSS_ACTIONS_CONTAINER + '"></div>',
 
-    TPL_ACTIONS: '<div class="row-fluid ' + CSS_ACTIONS_CONTAINER + '"></div',
+    TPL_HSV_TRIGGER: '<div class="col col-lg-6 col-md-6 col-sm-6 ' + CSS_HSV_TRIGGER + '">{more}</div>',
 
-    TPL_HSV_TRIGGER: '<div class="span6 ' + CSS_HSV_TRIGGER + '">{more}</div>',
-
-    TPL_NO_COLOR: '<div class="span6 ' + CSS_NO_COLOR + '">' + '<a href class="btn-link"><i class="' + CSS_NO_COLOR_ICON + ' icon-remove-circle"></i>{none}</a>' + '</div>',
+    TPL_NO_COLOR: '<div class="col-xs-6 ' + CSS_NO_COLOR + '">' +
+        '<a href class="btn-link"><span class="' + CSS_NO_COLOR_ICON +
+        ' glyphicon glyphicon-remove-circle"></span>{none}</a>' + '</div>',
 
     _currentTrigger: null,
     _eventHandles: null,
@@ -119,18 +86,18 @@ ColorPickerBase.prototype = {
     reset: function() {
         var instance = this;
 
-        instance.set(COLOR, _EMPTY, {
+        instance.set('color', '', {
             src: AWidget.UI_SRC
         });
 
         if (instance._colorPalette) {
-            instance._colorPalette.set(SELECTED, _INVALID_COLOR_INDEX, {
+            instance._colorPalette.set('selected', _INVALID_COLOR_INDEX, {
                 src: AWidget.UI_SRC
             });
         }
 
         if (instance._recentColorsPalette) {
-            instance._recentColorsPalette.set(SELECTED, _INVALID_COLOR_INDEX, {
+            instance._recentColorsPalette.set('selected', _INVALID_COLOR_INDEX, {
                 src: AWidget.UI_SRC
             });
         }
@@ -146,14 +113,14 @@ ColorPickerBase.prototype = {
         var instance = this,
             renderHSVPalette;
 
-        renderHSVPalette = instance.get(RENDER_HSV_PALETTE);
+        renderHSVPalette = instance.get('renderHSVPalette');
 
         if (renderHSVPalette) {
             instance._eventHandles.push(
-                instance._hsvTrigger.on(CLICK, instance._onHSVTriggerClick, instance)
+                instance._hsvTrigger.on('click', instance._onHSVTriggerClick, instance)
             );
 
-            instance._recentColorsPalette.on(SELECTED_CHANGE, instance._onRecentColorPaletteSelectChange, instance);
+            instance._recentColorsPalette.on('selectedChange', instance._onRecentColorPaletteSelectChange, instance);
         }
     },
 
@@ -167,7 +134,7 @@ ColorPickerBase.prototype = {
         var instance = this;
 
         instance._eventHandles.push(
-            instance._noColorNode.on(CLICK, instance._onNoColorClick, instance)
+            instance._noColorNode.on('click', instance._onNoColorClick, instance)
         );
     },
 
@@ -183,8 +150,8 @@ ColorPickerBase.prototype = {
         instance._bindNoColor();
         instance._bindHSVPalette();
 
-        instance.on(COLOR_CHANGE, instance._onColorChange, instance);
-        instance.on(VISIBLE_CHANGE, instance._onVisibleChange, instance);
+        instance.on('colorChange', instance._onColorChange, instance);
+        instance.on('visibleChange', instance._onVisibleChange, instance);
     },
 
     /**
@@ -202,7 +169,7 @@ ColorPickerBase.prototype = {
         defaultColor = instance.get('defaultColor');
 
         itemValue = {
-            name: instance.get(STRINGS).noColor,
+            name: instance.get('strings').noColor,
             value: defaultColor
         };
 
@@ -249,7 +216,7 @@ ColorPickerBase.prototype = {
             attributeValue,
             color;
 
-        color = instance.get(COLOR);
+        color = instance.get('color');
 
         attributeValue = instance.get(attributeName);
 
@@ -282,7 +249,7 @@ ColorPickerBase.prototype = {
         result = _INVALID_COLOR_INDEX;
 
         if (!items) {
-            items = instance._recentColorsPalette.get(ITEMS);
+            items = instance._recentColorsPalette.get('items');
         }
 
         AArray.some(
@@ -315,22 +282,17 @@ ColorPickerBase.prototype = {
             zIndex;
 
         if (!instance._hsvPaletteModal) {
-            contentBox = instance.get(CONTENT_BOX);
+            contentBox = instance.get('contentBox');
 
-            strings = instance.get(STRINGS);
+            strings = instance.get('strings');
 
-            zIndex = instance.get(Z_INDEX) || 0;
+            zIndex = instance.get('zIndex') || 0;
 
             zIndex += 2;
 
             instance._hsvPaletteModal = new A.HSVAPaletteModal({
                 centered: true,
-                headerContent: Lang.sub(
-                    instance.TPL_HEADER_CONTENT, {
-                        header: strings.header
-                    }
-                ),
-                hsv: instance.get(HSV_PALETTE),
+                hsv: instance.get('hsvPalette'),
                 modal: true,
                 resizable: false,
                 toolbars: {
@@ -342,17 +304,17 @@ ColorPickerBase.prototype = {
                                     instance._hsvPaletteModal.hide();
                                 }
                             }
-                            },
+                        },
                         {
                             label: strings.ok,
+                            cssClass: 'btn-primary',
                             on: {
                                 click: function() {
                                     instance._onHSVPaletteOK();
                                 }
-                            },
-                            primary: true
                             }
-                        ]
+                        }
+                    ]
                 },
                 zIndex: zIndex
             }).render();
@@ -371,7 +333,7 @@ ColorPickerBase.prototype = {
     _onColorChange: function(event) {
         var instance = this;
 
-        if (event.src !== RC_SRC && event.src !== AWidget.UI_SRC) {
+        if (event.src !== 'sourceRecentColor' && event.src !== AWidget.UI_SRC) {
             instance.hide();
         }
 
@@ -393,27 +355,26 @@ ColorPickerBase.prototype = {
     _onColorPaletteSelectChange: function(event) {
         var instance = this,
             color,
-            item,
-            selectedIndex;
+            item;
 
         if (event.src !== AWidget.UI_SRC) {
-            if (instance.get(RENDER_HSV_PALETTE)) {
-                instance._recentColorsPalette.set(SELECTED, _INVALID_COLOR_INDEX, {
+            if (instance.get('renderHSVPalette')) {
+                instance._recentColorsPalette.set('selected', _INVALID_COLOR_INDEX, {
                     src: AWidget.UI_SRC
                 });
             }
 
             if (event.newVal === _INVALID_COLOR_INDEX) {
-                instance.set(COLOR, _EMPTY, {
+                instance.set('color', '', {
                     trigger: instance._currentTrigger
                 });
             }
             else {
-                item = instance._colorPalette.get(ITEMS)[event.newVal];
+                item = instance._colorPalette.get('items')[event.newVal];
 
                 color = Lang.isObject(item) ? item.name : item;
 
-                instance.set(COLOR, color, {
+                instance.set('color', color, {
                     trigger: instance._currentTrigger
                 });
             }
@@ -427,25 +388,24 @@ ColorPickerBase.prototype = {
      * @param {EventFacade} event
      * @protected
      */
-    _onHSVPaletteOK: function(event) {
+    _onHSVPaletteOK: function() {
         var instance = this,
             color,
             emptySpotIndex,
-            recentColor,
             recentColors;
 
-        color = _POUND + instance._hsvPaletteModal.get(SELECTED);
+        color = '#' + instance._hsvPaletteModal.get('selected');
 
-        recentColors = instance._recentColorsPalette.get(ITEMS);
+        recentColors = instance._recentColorsPalette.get('items');
 
-        instance._colorPalette.set(SELECTED, _INVALID_COLOR_INDEX, {
+        instance._colorPalette.set('selected', _INVALID_COLOR_INDEX, {
             src: AWidget.UI_SRC
         });
 
         if (Lang.isNumber(instance._recentColorIndex)) {
             recentColors[instance._recentColorIndex] = color;
 
-            instance._recentColorsPalette.set(SELECTED, instance._recentColorIndex, {
+            instance._recentColorsPalette.set('selected', instance._recentColorIndex, {
                 src: AWidget.UI_SRC
             });
         }
@@ -459,15 +419,15 @@ ColorPickerBase.prototype = {
                 recentColors.push(color);
             }
 
-            instance._recentColorsPalette.set(SELECTED, emptySpotIndex, {
+            instance._recentColorsPalette.set('selected', emptySpotIndex, {
                 src: AWidget.UI_SRC
             });
         }
 
-        instance._recentColorsPalette.set(ITEMS, recentColors);
+        instance._recentColorsPalette.set('items', recentColors);
 
-        instance.set(COLOR, color, {
-            src: RC_SRC,
+        instance.set('color', color, {
+            src: 'sourceRecentColor',
             trigger: instance._currentTrigger
         });
 
@@ -488,7 +448,7 @@ ColorPickerBase.prototype = {
 
         hsvPalette = instance._getHSVPalette();
 
-        hsvPalette.set(SELECTED, _DEFAULT_HSV_COLOR);
+        hsvPalette.set('selected', 'FF0000');
 
         if (instance._clickOutsideHandle) {
             instance._clickOutsideHandle.detach();
@@ -509,7 +469,7 @@ ColorPickerBase.prototype = {
 
         event.halt();
 
-        instance.set(COLOR, _EMPTY, {
+        instance.set('color', '', {
             trigger: instance._currentTrigger
         });
     },
@@ -527,21 +487,21 @@ ColorPickerBase.prototype = {
             item;
 
         if (event.src !== AWidget.UI_SRC) {
-            instance._colorPalette.set(SELECTED, _INVALID_COLOR_INDEX, {
+            instance._colorPalette.set('selected', _INVALID_COLOR_INDEX, {
                 src: AWidget.UI_SRC
             });
 
             if (event.newVal === _INVALID_COLOR_INDEX) {
-                instance.set(COLOR, _EMPTY, {
+                instance.set('color', '', {
                     trigger: instance._currentTrigger
                 });
             }
             else {
-                item = instance._recentColorsPalette.get(ITEMS)[event.newVal];
+                item = instance._recentColorsPalette.get('items')[event.newVal];
 
                 color = Lang.isObject(item) ? item.name : item;
 
-                instance.set(COLOR, color, {
+                instance.set('color', color, {
                     trigger: instance._currentTrigger
                 });
             }
@@ -559,21 +519,20 @@ ColorPickerBase.prototype = {
         var instance = this,
             color,
             hsvPalette,
-            index,
             node;
 
         node = event.item;
 
-        color = node.getAttribute(_DATA_VALUE);
+        color = node.getAttribute('data-value');
 
-        instance._recentColorIndex = Lang.toInt(node.getAttribute(_DATA_INDEX));
+        instance._recentColorIndex = Lang.toInt(node.getAttribute('data-index'));
 
-        if (color === _DEFAULT_COLOR) {
+        if (color === '#FFF') {
             event.preventDefault();
 
             hsvPalette = instance._getHSVPalette();
 
-            hsvPalette.set(SELECTED, _DEFAULT_HSV_COLOR);
+            hsvPalette.set('selected', 'FF0000');
 
             if (instance._clickOutsideHandle) {
                 instance._clickOutsideHandle.detach();
@@ -597,16 +556,16 @@ ColorPickerBase.prototype = {
         target = event.currentTarget;
 
         if (target === instance._currentTrigger) {
-            instance.set(VISIBLE, !instance.get(VISIBLE));
+            instance.set('visible', !instance.get('visible'));
         }
         else {
             instance.set('align.node', target);
 
-            instance.set(VISIBLE, true);
+            instance.set('visible', true);
 
             instance._currentTrigger = target;
 
-            instance.get(CONTENT_BOX).one('.palette-item-inner').focus();
+            instance.get('contentBox').one('.palette-item-inner').focus();
         }
     },
 
@@ -632,8 +591,8 @@ ColorPickerBase.prototype = {
         else {
             instance.reset();
 
-            A.later(0, instance, function(event) {
-                instance._clickOutsideHandle = instance.get(BOUNDING_BOX).once(CLICKOUTSIDE, instance.hide,
+            A.later(0, instance, function() {
+                instance._clickOutsideHandle = instance.get('boundingBox').once('clickoutside', instance.hide,
                     instance);
             }, instance);
         }
@@ -664,16 +623,15 @@ ColorPickerBase.prototype = {
     _renderColorPalette: function() {
         var instance = this,
             body,
-            color,
             colorPaletteOptions;
 
         body = instance.getStdModNode(A.WidgetStdMod.BODY);
 
-        colorPaletteOptions = instance._getDefaultAttributeValue(COLOR_PALETTE);
+        colorPaletteOptions = instance._getDefaultAttributeValue('colorPalette');
 
         instance._colorPalette = new A.ColorPalette(colorPaletteOptions).render(body);
 
-        instance._colorPalette.on(SELECTED_CHANGE, instance._onColorPaletteSelectChange, instance);
+        instance._colorPalette.on('selectedChange', instance._onColorPaletteSelectChange, instance);
 
     },
 
@@ -686,10 +644,9 @@ ColorPickerBase.prototype = {
      */
     _renderHSVTrigger: function() {
         var instance = this,
-            body,
             strings;
 
-        strings = instance.get(STRINGS);
+        strings = instance.get('strings');
 
         instance._hsvTrigger = instance._actionsContainer.appendChild(
             Lang.sub(
@@ -727,11 +684,10 @@ ColorPickerBase.prototype = {
     _renderRecentColors: function() {
         var instance = this,
             body,
-            color,
             recentColors,
             recentColorsPalette;
 
-        recentColors = instance._getDefaultAttributeValue(RECENT_COLORS);
+        recentColors = instance._getDefaultAttributeValue('recentColors');
 
         body = instance.getStdModNode(A.WidgetStdMod.BODY);
 
@@ -739,7 +695,7 @@ ColorPickerBase.prototype = {
 
         recentColorsPalette.render(body);
 
-        recentColorsPalette.on([SELECT, UNSELECT], instance._onRecentColorClick, instance);
+        recentColorsPalette.on(['select', 'unselect'], instance._onRecentColorClick, instance);
 
         instance._recentColorsPalette = recentColorsPalette;
     },
@@ -755,13 +711,13 @@ ColorPickerBase.prototype = {
             renderColorPalette,
             renderHSVPalette;
 
-        renderColorPalette = instance.get(RENDER_COLOR_PALETTE);
+        renderColorPalette = instance.get('renderColorPalette');
 
         if (renderColorPalette) {
             instance._renderColorPalette();
         }
 
-        renderHSVPalette = instance.get(RENDER_HSV_PALETTE);
+        renderHSVPalette = instance.get('renderHSVPalette');
 
         instance._renderActionsContainer();
 
@@ -799,8 +755,6 @@ ColorPickerBase.prototype = {
      * @protected
      */
     _validateTrigger: function(value) {
-        var instance = this;
-
         return (value instanceof A.Node || value instanceof A.NodeList || Lang.isString(value));
     },
 
@@ -811,12 +765,12 @@ ColorPickerBase.prototype = {
      * @param {Node | String} value
      * @protected
      */
-    _uiSetTrigger: function(value) {
+    _uiSetTrigger: function() {
         var instance = this,
             trigger,
             triggerEvent;
 
-        trigger = instance.get(TRIGGER);
+        trigger = instance.get('trigger');
         triggerEvent = instance.get('triggerEvent');
 
         if (Lang.isString(trigger)) {
@@ -850,7 +804,7 @@ ColorPickerBase.ATTRS = {
      * @type {String}
      */
     bodyContent: {
-        value: _EMPTY
+        value: ''
     },
 
     /**
@@ -979,7 +933,7 @@ ColorPickerBase.ATTRS = {
      */
     defaultColor: {
         validator: Lang.isString,
-        value: _DEFAULT_COLOR
+        value: '#FFF'
     },
 
     /**
@@ -1042,7 +996,6 @@ ColorPickerBase.ATTRS = {
     strings: {
         value: {
             cancel: 'Cancel',
-            header: 'Choose custom color',
             more: 'More colors...',
             noColor: 'No color',
             none: 'None',
@@ -1059,7 +1012,7 @@ ColorPickerBase.ATTRS = {
     trigger: {
         setter: '_setTrigger',
         validator: '_validateTrigger',
-        value: _DOT + CSS_TRIGGER
+        value: '.' + CSS_TRIGGER
     },
 
     /**
@@ -1071,7 +1024,7 @@ ColorPickerBase.ATTRS = {
      */
     triggerEvent: {
         validator: Lang.isString,
-        value: CLICK
+        value: 'click'
     }
 };
 
@@ -1082,7 +1035,7 @@ ColorPickerBase.ATTRS = {
  * @type {String}
  * @static
  */
-ColorPickerBase.CSS_PREFIX = getClassName(_NAME);
+ColorPickerBase.CSS_PREFIX = getClassName('color-picker-inline');
 
 /**
  * Static property provides a string to identify the class.
@@ -1091,6 +1044,6 @@ ColorPickerBase.CSS_PREFIX = getClassName(_NAME);
  * @type {String}
  * @static
  */
-ColorPickerBase.NAME = _NAME;
+ColorPickerBase.NAME = 'color-picker-inline';
 
 A.ColorPickerBase = ColorPickerBase;

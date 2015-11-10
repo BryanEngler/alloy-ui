@@ -2,15 +2,76 @@
 <html>
 <head>
     <title>aui-tree</title>
+    <meta charset="utf-8" />
 
     <link rel="stylesheet" href="../../../../build/aui-css/css/bootstrap.css">
 
     <script src="../../../../build/aui/aui.js"></script>
     <script src="js/tests.js"></script>
-    <meta charset="utf-8" />
+    <style>
+    .unselectable, .unselectable * {
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -o-user-select: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+    </style>
 </head>
 <body class="yui3-skin-sam">
 <div id="logger"></div>
+<div id="createFromHTMLMarkupTest">
+    <ul>
+        <li class="tree-node">
+            <span class="tree-label unselectable">Checkboxes</span>
+            <ul class="tree-container">
+                <li class="tree-node">
+                    <span class="tree-label unselectable">Radio</span>
+                    <ul class="tree-container">
+                        <li class="tree-node">
+                            <span class="tree-label unselectable">Task</span>
+                            <ul class="tree-container">
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Watermelon</span>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li class="tree-node">
+                    <span class="tree-label unselectable">Radio</span>
+                    <ul class="tree-container">
+                        <li class="tree-node">
+                            <span class="tree-label unselectable">Task</span>
+                            <ul class="tree-container">
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Watermelon</span>
+                                </li>
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Apricot</span>
+                                </li>
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Pineapple</span>
+                                </li>
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Kiwi</span>
+                                </li>
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Orange</span>
+                                </li>
+                                <li class="tree-node">
+                                    <span class="tree-label unselectable">Pomegranate</span>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+</div>
+<div id='container'><div>
 
 <script>
 YUI({

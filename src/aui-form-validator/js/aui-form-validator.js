@@ -13,6 +13,7 @@ var Lang = A.Lang,
     isDate = Lang.isDate,
     isEmpty = AObject.isEmpty,
     isFunction = Lang.isFunction,
+    isNode = Lang.isNode,
     isObject = Lang.isObject,
     isString = Lang.isString,
     trim = Lang.trim,
@@ -21,88 +22,39 @@ var Lang = A.Lang,
 
     getRegExp = A.DOM._getRegExp,
 
-    FORM_VALIDATOR = 'form-validator',
-
-    _DOT = '.',
-    _EMPTY_STR = '',
-    _FORM_ELEMENTS_SELECTOR = 'input,select,textarea,button',
-    _INVALID_DATE = 'Invalid Date',
-    _PIPE = '|',
-    _SPACE = ' ',
-
-    EV_BLUR = 'blur',
-    EV_ERROR_FIELD = 'errorField',
-    EV_INPUT = 'input',
-    EV_SUBMIT_ERROR = 'submitError',
-    EV_VALIDATE_FIELD = 'validateField',
-    EV_VALID_FIELD = 'validField',
-
-    ARIA_REQUIRED = 'aria-required',
-    BOUNDING_BOX = 'boundingBox',
-    CHECKBOX = 'checkbox',
-    CONTAINER_ERROR_CLASS = 'containerErrorClass',
-    CONTAINER_VALID_CLASS = 'containerValidClass',
-    CONTROL = 'control',
-    ERROR = 'error',
-    ERROR_CLASS = 'errorClass',
-    FIELD = 'field',
-    FIELD_CONTAINER = 'fieldContainer',
-    FIELD_STRINGS = 'fieldStrings',
-    FOCUS = 'focus',
-    GROUP = 'group',
-    HELP = 'help',
-    INLINE = 'inline',
-    LABEL_CSS_CLASS = 'labelCssClass',
-    MESSAGE_CONTAINER = 'messageContainer',
-    NAME = 'name',
-    RADIO = 'radio',
-    RULES = 'rules',
-    SELECT_TEXT = 'selectText',
-    SHOW_ALL_MESSAGES = 'showAllMessages',
-    SHOW_MESSAGES = 'showMessages',
-    STACK = 'stack',
-    STACK_ERROR_CONTAINER = 'stackErrorContainer',
-    STRINGS = 'strings',
-    SUBMIT = 'submit',
-    SUCCESS = 'success',
-    TYPE = 'type',
-    VALID_CLASS = 'validClass',
-    VALIDATE_ON_BLUR = 'validateOnBlur',
-    VALIDATE_ON_INPUT = 'validateOnInput',
-
     getCN = A.getClassName,
 
-    CSS_CONTROL_GROUP = getCN(CONTROL, GROUP),
-    CSS_ERROR = getCN(ERROR),
-    CSS_ERROR_FIELD = getCN(ERROR, FIELD),
-    CSS_SUCCESS = getCN(SUCCESS),
-    CSS_SUCCESS_FIELD = getCN(SUCCESS, FIELD),
-    CSS_HELP_INLINE = getCN(HELP, INLINE),
-    CSS_STACK = getCN(FORM_VALIDATOR, STACK),
+    CSS_FORM_GROUP = getCN('form', 'group'),
+    CSS_HAS_ERROR = getCN('has', 'error'),
+    CSS_ERROR_FIELD = getCN('error', 'field'),
+    CSS_HAS_SUCCESS = getCN('has', 'success'),
+    CSS_SUCCESS_FIELD = getCN('success', 'field'),
+    CSS_HELP_BLOCK = getCN('help', 'block'),
+    CSS_STACK = getCN('form-validator', 'stack'),
 
     TPL_MESSAGE = '<div role="alert"></div>',
-    TPL_STACK_ERROR = '<div class="' + [CSS_STACK, CSS_HELP_INLINE].join(_SPACE) + '"></div>';
+    TPL_STACK_ERROR = '<div class="' + [CSS_STACK, CSS_HELP_BLOCK].join(' ') + '"></div>';
 
 A.mix(defaults, {
     STRINGS: {
-        DEFAULT: 'Please fix this field.',
-        acceptFiles: 'Please enter a value with a valid extension ({0}).',
-        alpha: 'Please enter only alpha characters.',
-        alphanum: 'Please enter only alphanumeric characters.',
-        date: 'Please enter a valid date.',
-        digits: 'Please enter only digits.',
-        email: 'Please enter a valid email address.',
-        equalTo: 'Please enter the same value again.',
-        iri: 'Please enter a valid IRI.',
-        max: 'Please enter a value less than or equal to {0}.',
-        maxLength: 'Please enter no more than {0} characters.',
-        min: 'Please enter a value greater than or equal to {0}.',
-        minLength: 'Please enter at least {0} characters.',
-        number: 'Please enter a valid number.',
-        range: 'Please enter a value between {0} and {1}.',
-        rangeLength: 'Please enter a value between {0} and {1} characters long.',
-        required: 'This field is required.',
-        url: 'Please enter a valid URL.'
+        DEFAULT: 'Please fix {field}.',
+        acceptFiles: 'Please enter a value with a valid extension ({0}) in {field}.',
+        alpha: 'Please enter only alpha characters in {field}.',
+        alphanum: 'Please enter only alphanumeric characters in {field}.',
+        date: 'Please enter a valid date in {field}.',
+        digits: 'Please enter only digits in {field}.',
+        email: 'Please enter a valid email address in {field}.',
+        equalTo: 'Please enter the same value again in {field}.',
+        iri: 'Please enter a valid IRI in {field}.',
+        max: 'Please enter a value less than or equal to {0} in {field}.',
+        maxLength: 'Please enter no more than {0} characters in {field}.',
+        min: 'Please enter a value greater than or equal to {0} in {field}.',
+        minLength: 'Please enter at least {0} characters in {field}.',
+        number: 'Please enter a valid number in {field}.',
+        range: 'Please enter a value between {0} and {1} in {field}.',
+        rangeLength: 'Please enter a value between {0} and {1} characters long in {field}.',
+        required: '{field} is required.',
+        url: 'Please enter a valid URL in {field}.'
     },
 
     REGEX: {
@@ -114,17 +66,81 @@ A.mix(defaults, {
 
         // Regex from Scott Gonzalez Email Address Validation:
         // http://projects.scottsplayground.com/email_address_validation/
-        email: /^((([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+(\.([a-z]|\d|[!#\$%&'\*\+\-\/=\?\^_`{\|}~]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])+)*)|((\x22)((((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(([\x01-\x08\x0b\x0c\x0e-\x1f\x7f]|\x21|[\x23-\x5b]|[\x5d-\x7e]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(\\([\x01-\x09\x0b\x0c\x0d-\x7f]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))))*(((\x20|\x09)*(\x0d\x0a))?(\x20|\x09)+)?(\x22)))@((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?$/i,
+        email: new RegExp('^((([a-z]|\\d|[!#\\$%&\'\\*\\+\\-\\/=\\?\\^_`{\\|}~]|' +
+            '[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])+(\\.([a-z]|\\d|[!#' +
+            '\\$%&\'\\*\\+\\-\\/=\\?\\^_`{\\|}~]|[\\u00A0-\\uD7FF\\uF900-\\uFDCF' +
+            '\\uFDF0-\\uFFEF])+)*)|((\\x22)((((\\x20|\\x09)*(\\x0d\\x0a))?(\\x20' +
+            '|\\x09)+)?(([\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]|\\x21|[\\x23-\\' +
+            'x5b]|[\\x5d-\\x7e]|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])' +
+            '|(\\\\([\\x01-\\x09\\x0b\\x0c\\x0d-\\x7f]|[\\u00A0-\\uD7FF\\uF900-' +
+            '\\uFDCF\\uFDF0-\\uFFEF]))))*(((\\x20|\\x09)*(\\x0d\\x0a))?(\\' +
+            'x20|\\x09)+)?(\\x22)))@((([a-z]|\\d|[\\u00A0-\\uD7FF\\uF900-\\' +
+            'uFDCF\\uFDF0-\\uFFEF])|(([a-z]|\\d|[\\u00A0-\\uD7FF\\uF900-\\' +
+            'uFDCF\\uFDF0-\\uFFEF])([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\' +
+            'uF900-\\uFDCF\\uFDF0-\\uFFEF])*([a-z]|\\d|[\\u00A0-\\uD7FF\\' +
+            'uF900-\\uFDCF\\uFDF0-\\uFFEF])))\\.)+(([a-z]|[\\u00A0-\\uD7FF\\' +
+            'uF900-\\uFDCF\\uFDF0-\\uFFEF])|(([a-z]|[\\u00A0-\\uD7FF\\' +
+            'uF900-\\uFDCF\\uFDF0-\\uFFEF])([a-z]|\\d|-|\\.|_|~|[\\' +
+            'u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])*([a-z]|[\\' +
+            'u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])))\\.?$', 'i'),
 
         // Regex from Scott Gonzalez IRI:
         // http://projects.scottsplayground.com/iri/demo/
-        iri: /^([a-z]([a-z]|\d|\+|-|\.)*):(\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?((\[(|(v[\da-f]{1,}\.(([a-z]|\d|-|\.|_|~)|[!\$&'\(\)\*\+,;=]|:)+))\])|((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=])*)(:\d*)?)(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*|(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)|((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)|((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)){0})(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i,
+        iri: new RegExp('^([a-z]([a-z]|\\d|\\+|-|\\.)*):(\\/\\/(((([a-z]|\\d|' +
+            '-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|(%[' +
+            '\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]|:)*@)?((\\[(|(v[\\da-f]{1' +
+            ',}\\.(([a-z]|\\d|-|\\.|_|~)|[!\\$&\'\\(\\)\\*\\+,;=]|:)+))\\])' +
+            '|((\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1' +
+            '\\d\\d|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d' +
+            '|25[0-5])\\.(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5]))|' +
+            '(([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-' +
+            '\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=])*)(:\\d*)?)' +
+            '(\\/(([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\' +
+            'uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]|:|@)*)' +
+            '*|(\\/((([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\' +
+            'uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]|:|@)+' +
+            '(\\/(([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\' +
+            'uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]|:|' +
+            '@)*)*)?)|((([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\' +
+            'uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\' +
+            '+,;=]|:|@)+(\\/(([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\' +
+            'uF900-\\uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\' +
+            '(\\)\\*\\+,;=]|:|@)*)*)|((([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\' +
+            'uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\' +
+            '$&\'\\(\\)\\*\\+,;=]|:|@)){0})(\\?((([a-z]|\\d|-|\\.|_|~|' +
+            '[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]' +
+            '{2})|[!\\$&\'\\(\\)\\*\\+,;=]|:|@)|[\\uE000-\\uF8FF]|\\/|' +
+            '\\?)*)?(\\#((([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\' +
+            'uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\' +
+            '+,;=]|:|@)|\\/|\\?)*)?$', 'i'),
 
         number: /^[+\-]?(\d+([.,]\d+)?)+([eE][+-]?\d+)?$/,
 
         // Regex from Scott Gonzalez Common URL:
         // http://projects.scottsplayground.com/iri/demo/common.html
-        url: /^(https?|ftp):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)*(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i
+        url: new RegExp('^(https?|ftp):\\/\\/(((([a-z]|\\d|-|\\.|_|~|[\\' +
+            'u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})' +
+            '|[!\\$&\'\\(\\)\\*\\+,;=]|:)*@)?(((\\d|[1-9]\\d|1\\d\\d|' +
+            '2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25' +
+            '[0-5])\\.(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.' +
+            '(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5]))|((([a-z]|\\d' +
+            '|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|(([a-z]|\\' +
+            'd|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])([a-z]|\\d|' +
+            '-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])*' +
+            '([a-z]|\\d|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])))\\' +
+            '.)*(([a-z]|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|' +
+            '(([a-z]|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])([a-z]' +
+            '|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])' +
+            '*([a-z]|[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])))\\.?)' +
+            '(:\\d*)?)(\\/((([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\' +
+            'uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]' +
+            '|:|@)+(\\/(([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\uFDCF' +
+            '\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]|:|@)*)' +
+            '*)?)?(\\?((([a-z]|\\d|-|\\.|_|~|[\\u00A0-\\uD7FF\\uF900-\\' +
+            'uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})|[!\\$&\'\\(\\)\\*\\+,;=]|' +
+            ':|@)|[\\uE000-\\uF8FF]|\\/|\\?)*)?(\\#((([a-z]|\\d|-|\\.|_|~|' +
+            '[\\u00A0-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFEF])|(%[\\da-f]{2})' +
+            '|[!\\$&\'\\(\\)\\*\\+,;=]|:|@)|\\/|\\?)*)?$', 'i')
     },
 
     RULES: {
@@ -136,16 +152,16 @@ A.mix(defaults, {
 
                 extensions = A.Array.map(extensions, A.Escape.regex);
 
-                regex = getRegExp('[.](' + extensions.join(_PIPE) + ')$', 'i');
+                regex = getRegExp('[.](' + extensions.join('|') + ')$', 'i');
             }
 
             return regex && regex.test(val);
         },
 
-        date: function(val, node, ruleValue) {
+        date: function(val) {
             var date = new Date(val);
 
-            return (isDate(date) && (date !== _INVALID_DATE) && !isNaN(date));
+            return (isDate(date) && (date !== 'Invalid Date') && !isNaN(date));
         },
 
         equalTo: function(val, node, ruleValue) {
@@ -182,11 +198,11 @@ A.mix(defaults, {
             return (length >= ruleValue[0]) && (length <= ruleValue[1]);
         },
 
-        required: function(val, node, ruleValue) {
+        required: function(val, node) {
             var instance = this;
 
             if (A.FormValidator.isCheckable(node)) {
-                var name = node.get(NAME),
+                var name = node.get('name'),
                     elements = A.all(instance.getFieldsByName(name));
 
                 return (elements.filter(':checked').size() > 0);
@@ -218,7 +234,7 @@ var FormValidator = A.Component.create({
      * @type String
      * @static
      */
-    NAME: FORM_VALIDATOR,
+    NAME: 'form-validator',
 
     /**
      * Static property used to define the default attribute
@@ -246,7 +262,7 @@ var FormValidator = A.Component.create({
          * @type String
          */
         containerErrorClass: {
-            value: CSS_ERROR,
+            value: CSS_HAS_ERROR,
             validator: isString
         },
 
@@ -257,7 +273,7 @@ var FormValidator = A.Component.create({
          * @type String
          */
         containerValidClass: {
-            value: CSS_SUCCESS,
+            value: CSS_HAS_SUCCESS,
             validator: isString
         },
 
@@ -291,7 +307,7 @@ var FormValidator = A.Component.create({
          * @type String
          */
         fieldContainer: {
-            value: _DOT + CSS_CONTROL_GROUP
+            value: '.' + CSS_FORM_GROUP
         },
 
         /**
@@ -447,6 +463,39 @@ var FormValidator = A.Component.create({
     },
 
     /**
+     * Creates custom rules from user input.
+     *
+     * @method _setCustomRules
+     * @param object
+     * @protected
+     */
+    _setCustomRules: function(object) {
+        A.each(
+            object,
+            function(rule, fieldName) {
+                A.config.FormValidator.RULES[fieldName] = rule.condition;
+                A.config.FormValidator.STRINGS[fieldName] = rule.errorMessage;
+            }
+        );
+    },
+
+    /**
+     * Ability to add custom validation rules.
+     *
+     * @method customRules
+     * @param object
+     * @public
+     * @static
+     */
+    addCustomRules: function(object) {
+        var instance = this;
+
+        if (isObject(object)) {
+            instance._setCustomRules(object);
+        }
+    },
+
+    /**
      * Checks if a node is a checkbox or radio input.
      *
      * @method isCheckable
@@ -455,9 +504,9 @@ var FormValidator = A.Component.create({
      * @return {Boolean}
      */
     isCheckable: function(node) {
-        var nodeType = node.get(TYPE).toLowerCase();
+        var nodeType = node.get('type').toLowerCase();
 
-        return (nodeType === CHECKBOX || nodeType === RADIO);
+        return (nodeType === 'checkbox' || nodeType === 'radio');
     },
 
     /**
@@ -488,8 +537,8 @@ var FormValidator = A.Component.create({
             instance._stackErrorContainers = {};
 
             instance.bindUI();
-            instance._uiSetValidateOnBlur(instance.get(VALIDATE_ON_BLUR));
-            instance._uiSetValidateOnInput(instance.get(VALIDATE_ON_INPUT));
+            instance._uiSetValidateOnBlur(instance.get('validateOnBlur'));
+            instance._uiSetValidateOnInput(instance.get('validateOnInput'));
         },
 
         /**
@@ -500,12 +549,12 @@ var FormValidator = A.Component.create({
          */
         bindUI: function() {
             var instance = this,
-                boundingBox = instance.get(BOUNDING_BOX);
+                boundingBox = instance.get('boundingBox');
 
-            var onceFocusHandler = boundingBox.delegate(FOCUS, function(event) {
+            var onceFocusHandler = boundingBox.delegate('focus', function() {
                 instance._setARIARoles();
                 onceFocusHandler.detach();
-            }, _FORM_ELEMENTS_SELECTOR);
+            }, 'input,select,textarea,button');
 
             instance.publish({
                 errorField: {
@@ -541,7 +590,7 @@ var FormValidator = A.Component.create({
         addFieldError: function(field, ruleName) {
             var instance = this,
                 errors = instance.errors,
-                name = field.get(NAME);
+                name = field.get('name');
 
             if (!errors[name]) {
                 errors[name] = [];
@@ -551,15 +600,17 @@ var FormValidator = A.Component.create({
         },
 
         /**
-         * Removes a validation error in the field.
+         * Deletes the field from the errors property object.
          *
          * @method clearFieldError
-         * @param field
+         * @param {Node|String} field
          */
         clearFieldError: function(field) {
-            var instance = this;
+            var fieldName = isNode(field) ? field.get('name') : field;
 
-            delete instance.errors[field.get(NAME)];
+            if (isString(fieldName)) {
+                delete this.errors[fieldName];
+            }
         },
 
         /**
@@ -572,7 +623,7 @@ var FormValidator = A.Component.create({
             var instance = this;
 
             A.each(
-                instance.get(RULES),
+                instance.get('rules'),
                 function(rule, fieldName) {
                     if (isFunction(fn)) {
                         fn.apply(instance, [rule, fieldName]);
@@ -590,7 +641,7 @@ var FormValidator = A.Component.create({
          */
         findFieldContainer: function(field) {
             var instance = this,
-                fieldContainer = instance.get(FIELD_CONTAINER);
+                fieldContainer = instance.get('fieldContainer');
 
             if (fieldContainer) {
                 return field.ancestor(fieldContainer);
@@ -604,11 +655,11 @@ var FormValidator = A.Component.create({
          */
         focusInvalidField: function() {
             var instance = this,
-                boundingBox = instance.get(BOUNDING_BOX),
-                field = boundingBox.one(_DOT + CSS_ERROR);
+                boundingBox = instance.get('boundingBox'),
+                field = boundingBox.one('.' + CSS_ERROR_FIELD);
 
             if (field) {
-                if (instance.get(SELECT_TEXT)) {
+                if (instance.get('selectText')) {
                     field.selectText();
                 }
 
@@ -648,7 +699,7 @@ var FormValidator = A.Component.create({
          */
         getFieldsByName: function(fieldName) {
             var instance = this,
-                domBoundingBox = instance.get(BOUNDING_BOX).getDOM();
+                domBoundingBox = instance.get('boundingBox').getDOM();
 
             return domBoundingBox.elements[fieldName];
         },
@@ -663,7 +714,7 @@ var FormValidator = A.Component.create({
         getFieldError: function(field) {
             var instance = this;
 
-            return instance.errors[field.get(NAME)];
+            return instance.errors[field.get('name')];
         },
 
         /**
@@ -674,11 +725,11 @@ var FormValidator = A.Component.create({
          */
         getFieldStackErrorContainer: function(field) {
             var instance = this,
-                name = field.get(NAME),
+                name = field.get('name'),
                 stackContainers = instance._stackErrorContainers;
 
             if (!stackContainers[name]) {
-                stackContainers[name] = instance.get(STACK_ERROR_CONTAINER);
+                stackContainers[name] = instance.get('stackErrorContainer');
             }
 
             return stackContainers[name];
@@ -694,11 +745,16 @@ var FormValidator = A.Component.create({
          */
         getFieldErrorMessage: function(field, rule) {
             var instance = this,
-                fieldName = field.get(NAME),
-                fieldStrings = instance.get(FIELD_STRINGS)[fieldName] || {},
-                fieldRules = instance.get(RULES)[fieldName],
-                strings = instance.get(STRINGS),
+                fieldName = field.get('name'),
+                fieldStrings = instance.get('fieldStrings')[fieldName] || {},
+                fieldRules = instance.get('rules')[fieldName],
+                fieldLabel = instance._findFieldLabel(field),
+                strings = instance.get('strings'),
                 substituteRulesMap = {};
+
+            if (fieldLabel) {
+                substituteRulesMap.field = fieldLabel;
+            }
 
             if (rule in fieldRules) {
                 var ruleValue = A.Array(fieldRules[rule]);
@@ -706,7 +762,7 @@ var FormValidator = A.Component.create({
                 A.each(
                     ruleValue,
                     function(value, index) {
-                        substituteRulesMap[index] = [value].join(_EMPTY_STR);
+                        substituteRulesMap[index] = [value].join('');
                     }
                 );
             }
@@ -741,15 +797,15 @@ var FormValidator = A.Component.create({
 
             instance._highlightHelper(
                 field,
-                instance.get(ERROR_CLASS),
-                instance.get(VALID_CLASS),
+                instance.get('errorClass'),
+                instance.get('validClass'),
                 valid
             );
 
             instance._highlightHelper(
                 fieldContainer,
-                instance.get(CONTAINER_ERROR_CLASS),
-                instance.get(CONTAINER_VALID_CLASS),
+                instance.get('containerErrorClass'),
+                instance.get('containerValidClass'),
                 valid
             );
         },
@@ -789,7 +845,7 @@ var FormValidator = A.Component.create({
         printStackError: function(field, container, errors) {
             var instance = this;
 
-            if (!instance.get(SHOW_ALL_MESSAGES)) {
+            if (!instance.get('showAllMessages')) {
                 errors = errors.slice(0, 1);
             }
 
@@ -797,9 +853,9 @@ var FormValidator = A.Component.create({
 
             A.Array.each(
                 errors,
-                function(error, index) {
+                function(error) {
                     var message = instance.getFieldErrorMessage(field, error),
-                        messageEl = instance.get(MESSAGE_CONTAINER).addClass(error);
+                        messageEl = instance.get('messageContainer').addClass(error);
 
                     container.append(
                         messageEl.html(message)
@@ -818,26 +874,29 @@ var FormValidator = A.Component.create({
 
             instance.eachRule(
                 function(rule, fieldName) {
-                    var field = instance.getField(fieldName);
-
-                    instance.resetField(field);
+                    instance.resetField(fieldName);
                 }
             );
         },
 
         /**
-         * Resets the CSS class and content of a field.
+         * Resets the CSS class and error status of a field.
          *
          * @method resetField
-         * @param field
+         * @param {Node|String} field
          */
         resetField: function(field) {
-            var instance = this,
-                stackContainer = instance.getFieldStackErrorContainer(field);
+            var fieldNode,
+                stackContainer;
 
-            stackContainer.remove();
-            instance.resetFieldCss(field);
-            instance.clearFieldError(field);
+            this.clearFieldError(field);
+            fieldNode = isString(field) ? this.getField(field) : field;
+
+            if (isNode(fieldNode)) {
+                stackContainer = this.getFieldStackErrorContainer(fieldNode);
+                stackContainer.remove();
+                this.resetFieldCss(fieldNode);
+            }
         },
 
         /**
@@ -860,8 +919,8 @@ var FormValidator = A.Component.create({
                 }
             };
 
-            removeClasses(field, [VALID_CLASS, ERROR_CLASS]);
-            removeClasses(fieldContainer, [CONTAINER_VALID_CLASS, CONTAINER_ERROR_CLASS]);
+            removeClasses(field, ['validClass', 'errorClass']);
+            removeClasses(fieldContainer, ['containerValidClass', 'containerErrorClass']);
         },
 
         /**
@@ -874,13 +933,13 @@ var FormValidator = A.Component.create({
         validatable: function(field) {
             var instance = this,
                 validatable = false,
-                fieldRules = instance.get(RULES)[field.get(NAME)];
+                fieldRules = instance.get('rules')[field.get('name')];
 
             if (fieldRules) {
                 var required = instance.normalizeRuleValue(fieldRules.required);
 
                 validatable = (required || (!required && defaults.RULES.required.apply(instance, [field.val(),
-                    field])) || fieldRules.custom);
+                    field])));
             }
 
             return !!validatable;
@@ -910,16 +969,17 @@ var FormValidator = A.Component.create({
          * @param field
          */
         validateField: function(field) {
-            var instance = this,
-                fieldNode = instance.getField(field);
+            var fieldNode,
+                validatable;
 
-            if (fieldNode) {
-                var validatable = instance.validatable(fieldNode);
+            this.resetField(field);
+            fieldNode = isString(field) ? this.getField(field) : field;
 
-                instance.resetField(fieldNode);
+            if (isNode(fieldNode)) {
+                validatable = this.validatable(fieldNode);
 
                 if (validatable) {
-                    instance.fire(EV_VALIDATE_FIELD, {
+                    this.fire('validateField', {
                         validator: {
                             field: fieldNode
                         }
@@ -976,32 +1036,32 @@ var FormValidator = A.Component.create({
          */
         _defErrorFieldFn: function(event) {
             var instance = this,
-                ancestor,
                 field,
-                nextSibling,
+                label,
                 stackContainer,
                 target,
                 validator;
 
+            label = instance.get('labelCssClass');
             validator = event.validator;
             field = validator.field;
 
             instance.highlight(field);
 
-            if (instance.get(SHOW_MESSAGES)) {
+            if (instance.get('showMessages')) {
                 target = field;
 
                 stackContainer = instance.getFieldStackErrorContainer(field);
 
-                nextSibling = field.get('nextSibling');
-
-                if (nextSibling && nextSibling.get('nodeType') === 3) {
-                    ancestor = field.ancestor();
-
-                    if (ancestor && ancestor.hasClass(instance.get(LABEL_CSS_CLASS))) {
-                        target = nextSibling;
-                    }
+                if (A.FormValidator.isCheckable(target)) {
+                    target = field.ancestor('.' + CSS_HAS_ERROR).get('lastChild');
                 }
+
+                // Use aria-describedby to provide extra details for filling input field
+                var id = field.get('id') + 'Helper';
+
+                stackContainer.set('id', id);
+                field.set('aria-describedby', id);
 
                 target.placeAfter(stackContainer);
 
@@ -1039,7 +1099,7 @@ var FormValidator = A.Component.create({
             var instance = this;
 
             var field = event.validator.field;
-            var fieldRules = instance.get(RULES)[field.get(NAME)];
+            var fieldRules = instance.get('rules')[field.get('name')];
 
             A.each(
                 fieldRules,
@@ -1059,7 +1119,7 @@ var FormValidator = A.Component.create({
             var fieldErrors = instance.getFieldError(field);
 
             if (fieldErrors) {
-                instance.fire(EV_ERROR_FIELD, {
+                instance.fire('errorField', {
                     validator: {
                         field: field,
                         errors: fieldErrors
@@ -1067,11 +1127,36 @@ var FormValidator = A.Component.create({
                 });
             }
             else {
-                instance.fire(EV_VALID_FIELD, {
+                instance.fire('validField', {
                     validator: {
                         field: field
                     }
                 });
+            }
+        },
+
+        /**
+         * Finds the label text of a field if existing.
+         *
+         * @method _findFieldLabel
+         * @param field
+         * @return {String}
+         */
+        _findFieldLabel: function(field) {
+            var labelCssClass = '.' + this.get('labelCssClass'),
+                label = A.one('label[for=' + field.get('id') + ']') ||
+                    field.ancestor().previous(labelCssClass);
+
+            if (!label) {
+                label = field.ancestor('.' + CSS_HAS_ERROR);
+
+                if (label) {
+                    label = label.one(labelCssClass);
+                }
+            }
+
+            if (label) {
+                return label.get('text');
             }
         },
 
@@ -1090,9 +1175,17 @@ var FormValidator = A.Component.create({
             if (field) {
                 if (valid) {
                     field.removeClass(errorClass).addClass(validClass);
+
+                    if (validClass === CSS_SUCCESS_FIELD) {
+                        field.removeAttribute('aria-invalid');
+                    }
                 }
                 else {
                     field.removeClass(validClass).addClass(errorClass);
+
+                    if (errorClass === CSS_ERROR_FIELD) {
+                        field.set('aria-invalid', true);
+                    }
                 }
             }
         },
@@ -1106,7 +1199,7 @@ var FormValidator = A.Component.create({
          */
         _extractRulesFromMarkup: function(rules) {
             var instance = this,
-                domBoundingBox = instance.get(BOUNDING_BOX).getDOM(),
+                domBoundingBox = instance.get('boundingBox').getDOM(),
                 elements = domBoundingBox.elements,
                 defaultRulesKeys = AObject.keys(defaults.RULES),
                 defaultRulesJoin = defaultRulesKeys.join('|'),
@@ -1181,12 +1274,12 @@ var FormValidator = A.Component.create({
             if (instance.hasErrors()) {
                 data.validator.errors = instance.errors;
 
-                instance.fire(EV_SUBMIT_ERROR, data);
+                instance.fire('submitError', data);
 
                 event.halt();
             }
             else {
-                instance.fire(SUBMIT, data);
+                instance.fire('submit', data);
             }
         },
 
@@ -1197,7 +1290,7 @@ var FormValidator = A.Component.create({
          * @param event
          * @protected
          */
-        _onFormReset: function(event) {
+        _onFormReset: function() {
             var instance = this;
 
             instance.resetAllFields();
@@ -1217,8 +1310,8 @@ var FormValidator = A.Component.create({
                     if (rule.required) {
                         var field = instance.getField(fieldName);
 
-                        if (field && !field.attr(ARIA_REQUIRED)) {
-                            field.attr(ARIA_REQUIRED, true);
+                        if (field && !field.attr('aria-required')) {
+                            field.attr('aria-required', true);
                         }
                     }
                 }
@@ -1235,7 +1328,7 @@ var FormValidator = A.Component.create({
         _uiSetExtractRules: function(val) {
             var instance = this;
             if (val) {
-                instance._extractRulesFromMarkup(instance.get(RULES));
+                instance._extractRulesFromMarkup(instance.get('rules'));
             }
         },
 
@@ -1248,12 +1341,12 @@ var FormValidator = A.Component.create({
          */
         _uiSetValidateOnInput: function(val) {
             var instance = this,
-                boundingBox = instance.get(BOUNDING_BOX);
+                boundingBox = instance.get('boundingBox');
 
             if (val) {
                 if (!instance._inputHandlers) {
-                    instance._inputHandlers = boundingBox.delegate(EV_INPUT, instance._onFieldInput,
-                        _FORM_ELEMENTS_SELECTOR, instance);
+                    instance._inputHandlers = boundingBox.delegate('input', instance._onFieldInput,
+                        'input,select,textarea,button', instance);
                 }
             }
             else {
@@ -1272,12 +1365,12 @@ var FormValidator = A.Component.create({
          */
         _uiSetValidateOnBlur: function(val) {
             var instance = this,
-                boundingBox = instance.get(BOUNDING_BOX);
+                boundingBox = instance.get('boundingBox');
 
             if (val) {
                 if (!instance._blurHandlers) {
-                    instance._blurHandlers = boundingBox.delegate(EV_BLUR, instance._onFieldInput,
-                        _FORM_ELEMENTS_SELECTOR, instance);
+                    instance._blurHandlers = boundingBox.delegate('blur', instance._onFieldInput,
+                        'input,select,textarea,button', instance);
                 }
             }
             else {
@@ -1292,7 +1385,7 @@ var FormValidator = A.Component.create({
 A.each(
     defaults.REGEX,
     function(regex, key) {
-        defaults.RULES[key] = function(val, node, ruleValue) {
+        defaults.RULES[key] = function(val) {
             return defaults.REGEX[key].test(val);
         };
     }

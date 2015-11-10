@@ -8,33 +8,11 @@ var Lang = A.Lang,
     UA = A.UA,
     getClassName = A.getClassName,
 
-    _NAME = 'video',
-
-    CSS_VIDEO = getClassName(_NAME),
-    CSS_VIDEO_NODE = getClassName(_NAME, 'node'),
+    CSS_VIDEO_NODE = getClassName('video', 'node'),
 
     DEFAULT_PLAYER_PATH = A.config.base + 'aui-video/assets/player.swf?t=' + Lang.now(),
 
     DOC = A.config.doc,
-
-    _EMPTY = '',
-
-    CONTENT_BOX = 'contentBox',
-    FIXED_ATTRIBUTES = 'fixedAttributes',
-    FLASH_VARS = 'flashVars',
-    HEIGHT = 'height',
-    MOVIE = 'movie',
-    NODE_NAME = 'nodeName',
-    OGV_URL = 'ogvUrl',
-    POSTER = 'poster',
-    SOURCE = 'source',
-    SRC = 'src',
-    SWF_URL = 'swfUrl',
-    TYPE = 'type',
-    URL = 'url',
-    VIDEO = 'video',
-    VIDEO_READY = 'videoReady',
-    WIDTH = 'width',
 
     TPL_VIDEO = '<video id="{id}" controls="controls" class="' + CSS_VIDEO_NODE + '" {height} {width}></video>',
     TPL_VIDEO_FALLBACK = '<div class="' + CSS_VIDEO_NODE + '"></div>';
@@ -45,6 +23,7 @@ var Lang = A.Lang,
  * Check the [live demo](http://alloyui.com/examples/video/).
  *
  * @class A.Video
+ * @extends A.Component
  * @param {Object} config Object literal specifying widget configuration
  *     properties.
  * @constructor
@@ -59,7 +38,7 @@ var Video = A.Component.create({
      * @type String
      * @static
      */
-    NAME: _NAME,
+    NAME: 'video',
 
     /**
      * Static property used to define the default attribute
@@ -72,14 +51,37 @@ var Video = A.Component.create({
     ATTRS: {
 
         /**
-         * URL used by Video to play.
+         * The required Flash version for the swf player
          *
-         * @attribute url
-         * @default ''
+         * @attribute flashPlayerVersion
+         * @default '9,0,0,0'
          * @type String
          */
-        url: {
-            value: ''
+        flashPlayerVersion: {
+            validator: Lang.isString,
+            value: '9,0,0,0'
+        },
+
+        /**
+         * Variables used by Flash player.
+         *
+         * @attribute flashVars
+         * @default {}
+         * @type Object
+         */
+        flashVars: {
+            value: {}
+        },
+
+        /**
+         * An additional list of attributes.
+         *
+         * @attribute fixedAttributes
+         * @default {}
+         * @type Object
+         */
+        fixedAttributes: {
+            value: {}
         },
 
         /**
@@ -91,6 +93,42 @@ var Video = A.Component.create({
          */
         ogvUrl: {
             value: ''
+        },
+
+        /**
+         * Image displayed before playback starts.
+         *
+         * @attribute poster
+         * @default ''
+         * @type String
+         */
+        poster: {
+            value: ''
+        },
+
+        /**
+         * If `true` the render phase will be automatically invoked
+         * preventing the `.render()` manual call.
+         *
+         * @attribute render
+         * @default true
+         * @type Boolean
+         */
+        render: {
+            value: true
+        },
+
+        /**
+         * Sets the `aria-role` for Video.
+         *
+         * @attribute role
+         * @default 'application'
+         * @type String
+         */
+        role: {
+            validator: Lang.isString,
+            value: 'application',
+            writeOnce: 'initOnly'
         },
 
         /**
@@ -106,48 +144,28 @@ var Video = A.Component.create({
         },
 
         /**
-         * Image displayed before playback starts.
+         * URL used by Video to play.
          *
-         * @attribute poster
+         * @attribute url
          * @default ''
          * @type String
          */
-        poster: {
+        url: {
             value: ''
         },
 
         /**
-         * An additional list of attributes.
+         * Boolean indicating if use of the WAI-ARIA Roles and States
+         * should be enabled.
          *
-         * @attribute fixedAttributes
-         * @default {}
-         * @type Object
-         */
-        fixedAttributes: {
-            value: {}
-        },
-
-        /**
-         * Variables used by Flash player.
-         *
-         * @attribute flashVars
-         * @default {}
-         * @type Object
-         */
-        flashVars: {
-            value: {}
-        },
-
-        /**
-         * If `true` the render phase will be automatically invoked
-         * preventing the `.render()` manual call.
-         *
-         * @attribute render
+         * @attribute useARIA
          * @default true
          * @type Boolean
          */
-        render: {
-            value: true
+        useARIA: {
+            validator: Lang.isBoolean,
+            value: true,
+            writeOnce: 'initOnly'
         }
     },
 
@@ -185,7 +203,18 @@ var Video = A.Component.create({
             instance._renderVideoTask = A.debounce(instance._renderVideo, 1, instance);
             instance._renderSwfTask = A.debounce(instance._renderSwf, 1, instance);
 
-            instance._renderVideo(!instance.get(OGV_URL));
+            instance._renderVideo(!instance.get('ogvUrl'));
+
+            instance._video.on('play', function (event) {
+                instance.fire('play', {
+                    cropType: event.type
+                });
+            });
+            instance._video.on('pause', function (event) {
+                instance.fire('pause', {
+                    cropType: event.type
+                });
+            });
         },
 
         /**
@@ -198,10 +227,30 @@ var Video = A.Component.create({
             var instance = this;
 
             instance.publish(
-                VIDEO_READY, {
+                'videoReady', {
                     fireOnce: true
                 }
             );
+
+            instance.publish('play');
+            instance.publish('pause');
+        },
+
+        /**
+         * Sync the Video UI. Lifecycle.
+         *
+         * @method syncUI
+         * @protected
+         */
+        syncUI: function() {
+            var instance = this;
+
+            if (instance.get('useARIA')) {
+                instance.plug(A.Plugin.Aria, {
+                    roleName: instance.get('role'),
+                    roleNode: instance.get('contentBox')
+                });
+            }
         },
 
         /**
@@ -252,11 +301,9 @@ var Video = A.Component.create({
          * @protected
          */
         _createSource: function(type) {
-            var instance = this;
+            var sourceNode = new A.Node(DOC.createElement('source'));
 
-            var sourceNode = new A.Node(DOC.createElement(SOURCE));
-
-            sourceNode.attr(TYPE, type);
+            sourceNode.attr('type', type);
 
             return sourceNode;
         },
@@ -270,12 +317,12 @@ var Video = A.Component.create({
         _renderSwf: function() {
             var instance = this;
 
-            var swfUrl = instance.get(SWF_URL);
+            var swfUrl = instance.get('swfUrl');
 
             if (swfUrl) {
-                var videoUrl = instance.get(URL);
-                var posterUrl = instance.get(POSTER);
-                var flashVars = instance.get(FLASH_VARS);
+                var videoUrl = instance.get('url');
+                var posterUrl = instance.get('poster');
+                var flashVars = instance.get('flashVars');
 
                 A.mix(
                     flashVars, {
@@ -297,7 +344,9 @@ var Video = A.Component.create({
                 var tplObj = '<object id="' + instance._swfId + '" ';
 
                 if (UA.ie) {
-                    tplObj += 'classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" ';
+                    tplObj += 'classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" ' +
+                        'codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=' +
+                        instance.get('flashPlayerVersion') + '" ';
                 }
                 else {
                     tplObj += 'type="application/x-shockwave-flash" data="' + swfUrl + '" ';
@@ -309,17 +358,19 @@ var Video = A.Component.create({
                     tplObj += '<param name="movie" value="' + swfUrl + '"/>';
                 }
 
-                var fixedAttributes = instance.get(FIXED_ATTRIBUTES);
+                var fixedAttributes = instance.get('fixedAttributes');
 
                 for (var i in fixedAttributes) {
-                    tplObj += '<param name="' + i + '" value="' + fixedAttributes[i] + '" />';
+                    if (fixedAttributes.hasOwnProperty(i)) {
+                        tplObj += '<param name="' + i + '" value="' + fixedAttributes[i] + '" />';
+                    }
                 }
 
                 if (flashVarString) {
                     tplObj += '<param name="flashVars" value="' + flashVarString + '" />';
                 }
 
-                if (posterUrl != '') {
+                if (posterUrl !== '') {
                     tplObj += '<img src="' + posterUrl + '" alt="" />';
                 }
 
@@ -352,12 +403,12 @@ var Video = A.Component.create({
                 tpl = TPL_VIDEO_FALLBACK;
             }
             else {
-                attrHeight = _EMPTY;
-                attrWidth = _EMPTY;
+                attrHeight = '';
+                attrWidth = '';
 
-                height = instance.get(HEIGHT);
+                height = instance.get('height');
 
-                width = instance.get(WIDTH);
+                width = instance.get('width');
 
                 if (height) {
                     attrHeight = 'height="' + height + '"';
@@ -378,7 +429,7 @@ var Video = A.Component.create({
 
             video = A.Node.create(tplObj);
 
-            instance.get(CONTENT_BOX).append(video);
+            instance.get('contentBox').append(video);
 
             instance._video = video;
         },
@@ -390,7 +441,7 @@ var Video = A.Component.create({
          * @param val
          * @protected
          */
-        _uiSetFixedAttributes: function(val) {
+        _uiSetFixedAttributes: function() {
             var instance = this;
 
             instance._renderSwfTask();
@@ -403,7 +454,7 @@ var Video = A.Component.create({
          * @param val
          * @protected
          */
-        _uiSetFlashVars: function(val) {
+        _uiSetFlashVars: function() {
             var instance = this;
 
             instance._renderSwfTask();
@@ -444,7 +495,7 @@ var Video = A.Component.create({
                         instance._sourceOgv = sourceOgv;
                     }
 
-                    sourceOgv.attr(SRC, val);
+                    sourceOgv.attr('src', val);
                 }
             }
         },
@@ -462,7 +513,7 @@ var Video = A.Component.create({
             var video = instance._video;
 
             if (instance._usingVideo()) {
-                video.setAttribute(POSTER, val);
+                video.setAttribute('poster', val);
             }
 
             instance._renderSwfTask();
@@ -475,7 +526,7 @@ var Video = A.Component.create({
          * @param val
          * @protected
          */
-        _uiSetSwfUrl: function(val) {
+        _uiSetSwfUrl: function() {
             var instance = this;
 
             instance._renderSwfTask();
@@ -491,13 +542,13 @@ var Video = A.Component.create({
         _uiSetUrl: function(val) {
             var instance = this;
 
-            var ogvUrl = instance.get(OGV_URL);
+            var ogvUrl = instance.get('ogvUrl');
             var video = instance._video;
 
             var sourceMp4 = instance._sourceMp4;
 
             if (UA.gecko && !instance._usingVideo()) {
-                if (sourceMp4 != null) {
+                if (sourceMp4) {
                     sourceMp4.remove(true);
 
                     instance._sourceMp4 = null;
@@ -513,7 +564,7 @@ var Video = A.Component.create({
                         instance._sourceMp4 = sourceMp4;
                     }
 
-                    sourceMp4.attr(SRC, val);
+                    sourceMp4.attr('src', val);
                 }
             }
 
@@ -529,7 +580,7 @@ var Video = A.Component.create({
         _usingVideo: function() {
             var instance = this;
 
-            return (instance._video.get(NODE_NAME).toLowerCase() === VIDEO);
+            return (instance._video.get('nodeName').toLowerCase() === 'video');
         }
     }
 });

@@ -32,7 +32,7 @@ var Lang = A.Lang,
         return ((1 - t) * (1 - t) * (1 - t));
     },
 
-    // Find a Cubic Bezier point based on the control points. Consider the first
+    // Find a Cubic Bézier point based on the control points. Consider the first
     // two control points as the start and end point respectively.
     getCubicBezier = function(t, startPos, endPos, cp1, cp2) {
         var x = startPos[0] * B1(t) + cp1[0] * B2(t) + cp2[0] * B3(t) + endPos[0] * B4(t);
@@ -51,32 +51,6 @@ var Lang = A.Lang,
     sign = function(x) {
         return x === 0 ? 0 : (x < 0 ? -1 : 1);
     },
-
-    ARROW_POINTS = 'arrowPoints',
-    BUILDER = 'builder',
-    CLICK = 'click',
-    COLOR = 'color',
-    CONNECTOR = 'connector',
-    FILL = 'fill',
-    GRAPHIC = 'graphic',
-    LAZY_DRAW = 'lazyDraw',
-    MOUSEENTER = 'mouseenter',
-    MOUSELEAVE = 'mouseleave',
-    NAME = 'name',
-    NODE_NAME = 'nodeName',
-    P1 = 'p1',
-    P2 = 'p2',
-    PATH = 'path',
-    SELECTED = 'selected',
-    SHAPE = 'shape',
-    SHAPE_ARROW = 'shapeArrow',
-    SHAPE_ARROW_HOVER = 'shapeArrowHover',
-    SHAPE_ARROW_SELECTED = 'shapeArrowSelected',
-    SHAPE_HOVER = 'shapeHover',
-    SHAPE_SELECTED = 'shapeSelected',
-    SHOW_NAME = 'showName',
-    STROKE = 'stroke',
-    VISIBLE = 'visible',
 
     getCN = A.getClassName,
 
@@ -106,8 +80,6 @@ A.PolygonUtil = {
     },
 
     drawPolygon: function(shape, points) {
-        var instance = this;
-
         shape.moveTo(points[0][0], points[0][1]);
 
         AArray.each(points, function(p, i) {
@@ -120,7 +92,6 @@ A.PolygonUtil = {
     },
 
     translatePoints: function(points, x, y) {
-        var instance = this;
         var xy = [];
 
         AArray.each(points, function(p, i) {
@@ -158,21 +129,21 @@ A.PolygonUtil = {
  * @constructor
  */
 A.Connector = A.Base.create('line', A.Base, [], {
-    SERIALIZABLE_ATTRS: [COLOR, LAZY_DRAW, NAME, SHAPE_SELECTED, SHAPE_HOVER, /*SHAPE,*/ P1, P2],
+    SERIALIZABLE_ATTRS: ['color', 'lazyDraw', 'name', 'shapeSelected', 'shapeHover', /*SHAPE,*/ 'p1', 'p2'],
 
     shape: null,
     shapeArrow: null,
 
     /**
-     * Construction logic executed during Connector instantiation. Lifecycle.
+     * Construction logic executed during `A.Connector` instantiation. Lifecycle.
      *
      * @method initializer
      * @param config
      * @protected
      */
-    initializer: function(config) {
+    initializer: function() {
         var instance = this;
-        var lazyDraw = instance.get(LAZY_DRAW);
+        var lazyDraw = instance.get('lazyDraw');
 
         instance.after({
             nameChange: instance._afterNameChange,
@@ -189,14 +160,14 @@ A.Connector = A.Base.create('line', A.Base, [], {
             instance.draw();
         }
 
-        instance._uiSetVisible(instance.get(VISIBLE));
-        instance._uiSetName(instance.get(NAME));
-        instance._uiSetSelected(instance.get(SELECTED), !lazyDraw);
-        instance._uiSetShowName(instance.get(SHOW_NAME));
+        instance._uiSetVisible(instance.get('visible'));
+        instance._uiSetName(instance.get('name'));
+        instance._uiSetSelected(instance.get('selected'), !lazyDraw);
+        instance._uiSetShowName(instance.get('showName'));
     },
 
     /**
-     * Destructor lifecycle implementation for the `Connector` class.
+     * Destructor lifecycle implementation for the `A.Connector` class.
      *
      * @method destructor
      * @protected
@@ -206,11 +177,11 @@ A.Connector = A.Base.create('line', A.Base, [], {
 
         instance.shape.destroy();
         instance.shapeArrow.destroy();
-        instance.get(NODE_NAME).remove();
+        instance.get('nodeName').remove();
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Responsible for drawing the connectors.
      *
      * @method draw
      */
@@ -219,8 +190,8 @@ A.Connector = A.Base.create('line', A.Base, [], {
         var shape = instance.shape;
         var shapeArrow = instance.shapeArrow;
 
-        var p1 = instance.get(P1),
-            p2 = instance.get(P2),
+        var p1 = instance.get('p1'),
+            p2 = instance.get('p2'),
             c1 = instance.toCoordinate(p1),
             c2 = instance.toCoordinate(p2),
             x1 = c1[0],
@@ -237,21 +208,21 @@ A.Connector = A.Base.create('line', A.Base, [], {
 
         if (sign(angle) < 0) {
             curveArgs = [
-    [x1 + dx, y1, x2 - dx, y2, x2, y2], //3,6
-    [x1 + dx, y1, x2, y1 - dy, x2, y2], //3,5
-    [x1, y1 - dy, x2, y1 - dy, x2, y2], //0,5
-    [x1 - dx, y1, x2, y1 - dy, x2, y2], //2,5
-    [x1 - dx, y1, x2 + dx, y2, x2, y2] //2,7
-   ];
+                [x1 + dx, y1, x2 - dx, y2, x2, y2], // 3,6
+                [x1 + dx, y1, x2, y1 - dy, x2, y2], // 3,5
+                [x1, y1 - dy, x2, y1 - dy, x2, y2], // 0,5
+                [x1 - dx, y1, x2, y1 - dy, x2, y2], // 2,5
+                [x1 - dx, y1, x2 + dx, y2, x2, y2] // 2,7
+            ];
         }
         else {
             curveArgs = [
-    [x1 + dx, y1, x2 - dx, y2, x2, y2], //3,6
-    [x1 + dx, y1, x2, y1 + dy, x2, y2], //3,4
-    [x1, y1 + dy, x2, y1 + dy, x2, y2], //1,4
-    [x1 - dx, y1, x2, y1 + dy, x2, y2], //2,4
-    [x1 - dx, y1, x2 + dx, y2, x2, y2] //2,7
-   ];
+                [x1 + dx, y1, x2 - dx, y2, x2, y2], // 3,6
+                [x1 + dx, y1, x2, y1 + dy, x2, y2], // 3,4
+                [x1, y1 + dy, x2, y1 + dy, x2, y2], // 1,4
+                [x1 - dx, y1, x2, y1 + dy, x2, y2], // 2,4
+                [x1 - dx, y1, x2 + dx, y2, x2, y2] // 2,7
+            ];
         }
 
         var cp = curveArgs[pseudoQuadrant];
@@ -269,20 +240,21 @@ A.Connector = A.Base.create('line', A.Base, [], {
             centerXY = getCubicBezier(0.5, [x1, y1], [x2, y2], [cp[0], cp[1]], [cp[2], cp[3]]);
 
         shapeArrow.clear();
-        A.PolygonUtil.drawArrow(shapeArrow, xy2[0], xy2[1], xy1[0], xy1[1], instance.get(ARROW_POINTS));
+        A.PolygonUtil.drawArrow(shapeArrow, xy2[0], xy2[1], xy1[0], xy1[1], instance.get('arrowPoints'));
         shapeArrow.end();
 
-        if (instance.get(SHOW_NAME)) {
-            instance.get(NODE_NAME).center(instance.toXY(centerXY));
+        if (instance.get('showName')) {
+            instance.get('nodeName').center(instance.toXY(centerXY));
         }
 
         return instance;
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Gets the list of properties from the property model.
      *
      * @method getProperties
+     * @return {Array}
      */
     getProperties: function() {
         var instance = this;
@@ -296,16 +268,17 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Gets the model defition of a property.
      *
      * @method getPropertyModel
+     * @return {Array}
      */
     getPropertyModel: function() {
         var instance = this;
         var strings = instance.getStrings();
 
         return [{
-            attributeName: NAME,
+            attributeName: 'name',
             editor: new A.TextCellEditor({
                 validator: {
                     rules: {
@@ -315,12 +288,12 @@ A.Connector = A.Base.create('line', A.Base, [], {
                     }
                 }
             }),
-            name: strings[NAME]
+            name: strings.name
         }];
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Gets the collection of strings used to label elements of the UI.
      *
      * @method getStrings
      */
@@ -329,33 +302,33 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Sets the visibility to `false`.
      *
      * @method hide
      */
     hide: function() {
         var instance = this;
 
-        instance.set(VISIBLE, false);
+        instance.set('visible', false);
 
         return instance;
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Sets the visibility to `true`.
      *
      * @method show
      */
     show: function() {
         var instance = this;
 
-        instance.set(VISIBLE, true);
+        instance.set('visible', true);
 
         return instance;
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Converts X and Y positions to a coordinate.
      *
      * @method toCoordinate
      * @attribute coord
@@ -367,9 +340,10 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Converts serializable attributes to JSON format.
      *
      * @method toJSON
+     * @return {Object}
      */
     toJSON: function() {
         var instance = this;
@@ -383,7 +357,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Converts a coordinate to X and Y positions.
      *
      * @method toXY
      * @attribute coord
@@ -395,7 +369,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires after `name` attribute value change.
      *
      * @method _afterNameChange
      * @param event
@@ -410,7 +384,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires after `selected` attribute value change.
      *
      * @method _afterSelectedChange
      * @param event
@@ -423,7 +397,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires after `showName` attribute value change.
      *
      * @method _afterShowNameChange
      * @param event
@@ -436,7 +410,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires after `visible` attribute value change.
      *
      * @method _afterVisibleChange
      * @param event
@@ -449,7 +423,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Adds shapes in the UI and bind its events.
      *
      * @method _initShapes
      * @protected
@@ -457,23 +431,23 @@ A.Connector = A.Base.create('line', A.Base, [], {
     _initShapes: function() {
         var instance = this;
 
-        var shape = instance.shape = instance.get(GRAPHIC).addShape(
-            instance.get(SHAPE)
+        var shape = instance.shape = instance.get('graphic').addShape(
+            instance.get('shape')
         );
 
-        var shapeArrow = instance.shapeArrow = instance.get(GRAPHIC).addShape(
-            instance.get(SHAPE_ARROW)
+        var shapeArrow = instance.shapeArrow = instance.get('graphic').addShape(
+            instance.get('shapeArrow')
         );
 
-        shape.on(CLICK, A.bind(instance._onShapeClick, instance));
-        shape.on(MOUSEENTER, A.bind(instance._onShapeMouseEnter, instance));
-        shape.on(MOUSELEAVE, A.bind(instance._onShapeMouseLeave, instance));
-        shapeArrow.on(CLICK, A.bind(instance._onShapeClick, instance));
-        instance.get(NODE_NAME).on(CLICK, A.bind(instance._onShapeClick, instance));
+        shape.on('click', A.bind(instance._onShapeClick, instance));
+        shape.on('mouseenter', A.bind(instance._onShapeMouseEnter, instance));
+        shape.on('mouseleave', A.bind(instance._onShapeMouseLeave, instance));
+        shapeArrow.on('click', A.bind(instance._onShapeClick, instance));
+        instance.get('nodeName').on('click', A.bind(instance._onShapeClick, instance));
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Calculates the distance relative to the graphic.
      *
      * @method _offsetXY
      * @param xy
@@ -482,13 +456,13 @@ A.Connector = A.Base.create('line', A.Base, [], {
      */
     _offsetXY: function(xy, sign) {
         var instance = this;
-        var offsetXY = instance.get(GRAPHIC).getXY();
+        var offsetXY = instance.get('graphic').getXY();
 
         return [xy[0] + offsetXY[0] * sign, xy[1] + offsetXY[1] * sign];
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires when shape is clicked.
      *
      * @method _onShapeClick
      * @param event
@@ -496,8 +470,8 @@ A.Connector = A.Base.create('line', A.Base, [], {
      */
     _onShapeClick: function(event) {
         var instance = this;
-        var builder = instance.get(BUILDER);
-        var selected = instance.get(SELECTED);
+        var builder = instance.get('builder');
+        var selected = instance.get('selected');
 
         if (builder) {
             if (event.hasModifier()) {
@@ -515,53 +489,53 @@ A.Connector = A.Base.create('line', A.Base, [], {
             }
         }
 
-        instance.set(SELECTED, !selected);
+        instance.set('selected', !selected);
 
         event.halt();
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires when mouse enters a shape.
      *
      * @method _onShapeMouseEnter
      * @param event
      * @protected
      */
-    _onShapeMouseEnter: function(event) {
+    _onShapeMouseEnter: function() {
         var instance = this;
 
-        if (!instance.get(SELECTED)) {
-            var shapeHover = instance.get(SHAPE_HOVER);
-            var shapeArrowHover = instance.get(SHAPE_ARROW_HOVER);
+        if (!instance.get('selected')) {
+            var shapeHover = instance.get('shapeHover');
+            var shapeArrowHover = instance.get('shapeArrowHover');
 
             if (shapeHover) {
-                instance._updateShape(instance.shape, shapeHover);
+                instance._updateShape(instance.shape, shapeHover, false);
             }
 
             if (shapeArrowHover) {
-                instance._updateShape(instance.shapeArrow, shapeArrowHover);
+                instance._updateShape(instance.shapeArrow, shapeArrowHover, false);
             }
         }
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Fires when mouse leaves a shape.
      *
      * @method _onShapeMouseLeave
      * @param event
      * @protected
      */
-    _onShapeMouseLeave: function(event) {
+    _onShapeMouseLeave: function() {
         var instance = this;
 
-        if (!instance.get(SELECTED)) {
-            instance._updateShape(instance.shape, instance.get(SHAPE));
-            instance._updateShape(instance.shapeArrow, instance.get(SHAPE_ARROW));
+        if (!instance.get('selected')) {
+            instance._updateShape(instance.shape, instance.get('shape'), false);
+            instance._updateShape(instance.shapeArrow, instance.get('shapeArrow'), false);
         }
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Set the `nodeName` attribute.
      *
      * @method _setNodeName
      * @param val
@@ -572,14 +546,14 @@ A.Connector = A.Base.create('line', A.Base, [], {
 
         if (!A.instanceOf(val, A.Node)) {
             val = new A.Node.create(val);
-            instance.get(BUILDER).canvas.append(val.unselectable());
+            instance.get('builder').dropContainer.append(val.unselectable());
         }
 
         return val;
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Set the `shape` attribute.
      *
      * @method _setShape
      * @param val
@@ -589,9 +563,9 @@ A.Connector = A.Base.create('line', A.Base, [], {
         var instance = this;
 
         return A.merge({
-                type: PATH,
+                type: 'path',
                 stroke: {
-                    color: instance.get(COLOR),
+                    color: instance.get('color'),
                     weight: 2,
                     opacity: 1
                 }
@@ -601,7 +575,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Set the `shapeArrow` attribute.
      *
      * @method _setShapeArrow
      * @param val
@@ -611,13 +585,13 @@ A.Connector = A.Base.create('line', A.Base, [], {
         var instance = this;
 
         return A.merge({
-                type: PATH,
+                type: 'path',
                 fill: {
-                    color: instance.get(COLOR),
+                    color: instance.get('color'),
                     opacity: 1
                 },
                 stroke: {
-                    color: instance.get(COLOR),
+                    color: instance.get('color'),
                     weight: 2,
                     opacity: 1
                 }
@@ -627,7 +601,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Sets the `name` attribute in the UI.
      *
      * @method _uiSetName
      * @param val
@@ -636,11 +610,11 @@ A.Connector = A.Base.create('line', A.Base, [], {
     _uiSetName: function(val) {
         var instance = this;
 
-        instance.get(NODE_NAME).html(val);
+        instance.get('nodeName').html(A.Escape.html(val));
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Sets the `selected` attribute in the UI.
      *
      * @method _uiSetSelected
      * @param val
@@ -650,13 +624,15 @@ A.Connector = A.Base.create('line', A.Base, [], {
     _uiSetSelected: function(val, draw) {
         var instance = this;
 
-        instance._updateShape(instance.shape, val ? instance.get(SHAPE_SELECTED) : instance.get(SHAPE), draw);
-        instance._updateShape(instance.shapeArrow, val ? instance.get(SHAPE_ARROW_SELECTED) : instance.get(
-            SHAPE_ARROW), draw);
+        instance._updateShape(
+            instance.shape, val ? instance.get('shapeSelected') : instance.get('shape'), draw);
+
+        instance._updateShape(
+            instance.shapeArrow, val ? instance.get('shapeArrowSelected') : instance.get('shapeArrow'), draw);
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Sets the `showName` attribute in the UI.
      *
      * @method _uiSetShowName
      * @param val
@@ -665,11 +641,11 @@ A.Connector = A.Base.create('line', A.Base, [], {
     _uiSetShowName: function(val) {
         var instance = this;
 
-        instance.get(NODE_NAME).toggleClass(CSS_HIDE, !val);
+        instance.get('nodeName').toggleClass(CSS_HIDE, !val);
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Sets the `visible` attribute in the UI.
      *
      * @method _uiSetVisible
      * @param val
@@ -678,13 +654,13 @@ A.Connector = A.Base.create('line', A.Base, [], {
     _uiSetVisible: function(val) {
         var instance = this;
 
-        instance.shape.set(VISIBLE, val);
-        instance.shapeArrow.set(VISIBLE, val);
-        instance._uiSetShowName(val && instance.get(SHOW_NAME));
+        instance.shape.set('visible', val);
+        instance.shapeArrow.set('visible', val);
+        instance._uiSetShowName(val && instance.get('showName'));
     },
 
     /**
-     * TODO. Wanna help? Please send a Pull Request.
+     * Updates shape's fill and stroke.
      *
      * @method _updateShape
      * @param shape
@@ -695,12 +671,12 @@ A.Connector = A.Base.create('line', A.Base, [], {
     _updateShape: function(shape, cShape, draw) {
         var instance = this;
 
-        if (cShape.hasOwnProperty(FILL)) {
-            shape.set(FILL, cShape[FILL]);
+        if (cShape.hasOwnProperty('fill')) {
+            shape.set('fill', cShape.fill);
         }
 
-        if (cShape.hasOwnProperty(STROKE)) {
-            shape.set(STROKE, cShape[STROKE]);
+        if (cShape.hasOwnProperty('stroke')) {
+            shape.set('stroke', cShape.stroke);
         }
 
         if (draw !== false) {
@@ -710,7 +686,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
 }, {
     /**
      * Static property used to define the default attribute
-     * configuration for the Connector.
+     * configuration for the `A.Connector`.
      *
      * @property ATTRS
      * @type Object
@@ -719,7 +695,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
     ATTRS: {
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Arrow points from `A.PolygonUtil` instance.
          *
          * @attribute arrowPoints
          * @default 'arrowPoints'
@@ -730,14 +706,14 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Stores an instance of `A.DiagramBuilder`.
          *
          * @attribute builder
          */
         builder: {},
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * The color used in the connector.
          *
          * @attribute color
          * @default '#27aae1'
@@ -749,7 +725,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Graphic used to represent the connector.
          *
          * @attribute graphic
          * @type Graphic
@@ -759,7 +735,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Determine if the draw should be delayed or not.
          *
          * @attribute lazyDraw
          * @default false
@@ -771,22 +747,20 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * The name of the connector.
          *
          * @attribute name
          * @type String
          */
         name: {
             valueFn: function() {
-                var instance = this;
-
-                return CONNECTOR + (++A.Env._uidx);
+                return 'connector' + (++A.Env._uidx);
             },
             validator: isString
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * The connector node name.
          *
          * @attribute nodeName
          * @type String
@@ -799,7 +773,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Origin connector position.
          *
          * @attribute p1
          * @default [0, 0]
@@ -811,7 +785,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Destination connector position.
          *
          * @attribute p2
          * @default [0, 0]
@@ -823,7 +797,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Checks if a connector is selected or not.
          *
          * @attribute selected
          * @default false
@@ -835,7 +809,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Graphic used to represent the connector's shape.
          *
          * @attribute shape
          * @default null
@@ -846,7 +820,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Graphic used to represent the connector's shape arrow.
          *
          * @attribute shapeArrow
          * @default null
@@ -857,7 +831,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Collection of styles applied when mouse is over the shape arrow.
          *
          * @attribute shapeArrowHover
          * @type Object
@@ -876,7 +850,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Collection of styles applied when shape arrow is selected.
          *
          * @attribute shapeArrowSelected
          * @type Object
@@ -895,7 +869,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Collection of styles applied when mouse is over the shape.
          *
          * @attribute shapeHover
          * @type Object
@@ -911,7 +885,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Collection of styles applied when shape is selected.
          *
          * @attribute shapeSelected
          * @type Object
@@ -927,7 +901,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Sets the visibility of the connector name.
          *
          * @attribute showName
          * @default true
@@ -939,7 +913,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Stores the uid, source and target data from a connector.
          *
          * @attribute transition
          * @default {}
@@ -951,7 +925,7 @@ A.Connector = A.Base.create('line', A.Base, [], {
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Indicates whether or not the connector is visible.
          *
          * @attribute visible
          * @default true

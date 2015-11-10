@@ -1,19 +1,7 @@
 var Lang = A.Lang,
+    AArray = A.Array,
 
-    _DOCUMENT = A.one(A.config.doc),
-    _NAME = 'btn-search-cancel',
-
-    BODY = 'body',
-    CLICK = 'click',
-    CONTAINER = 'container',
-    FOCUS = 'focus',
-    GUTTER = 'gutter',
-    ICON_CLASS = 'iconClass',
-    INPUT = 'input',
-    REGION = 'region',
-    REMOVE = 'remove',
-    TRIGGER = 'trigger',
-    Z_INDEX = 'zIndex';
+    _DOCUMENT = A.one(A.config.doc);
 
 /**
  * A base class for `ButtonSearchCancel`, providing:
@@ -28,7 +16,7 @@ var Lang = A.Lang,
  *     properties.
  * @constructor
  */
-var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
+var ButtonSearchCancel = A.Base.create('btn-search-cancel', A.Base, [], {
     /**
      * HTML template used on the button search cancel.
      *
@@ -36,7 +24,9 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
      * @type {String}
      * @protected
      */
-    TEMPLATE: '<div class="' + A.getClassName(_NAME) + '" style="padding: 5px; position: absolute; z-index: {zIndex};">' + '<i class="{iconClass}"></i>' + '</div>',
+    TEMPLATE: '<div class="' + A.getClassName('btn-search-cancel') +
+        '" style="padding: 5px; position: absolute; z-index: {zIndex};">' +
+        '<i class="{iconClass}"></i>' + '</div>',
 
     /**
      * Holds the created buttons for each element match from the trigger
@@ -69,7 +59,7 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
 
         instance._buttons = [];
 
-        instance.bindDelegateUI();
+        instance.bindUI();
     },
 
     /**
@@ -81,25 +71,37 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
     destroy: function() {
         var instance = this;
 
-        A.Array.invoke(instance._buttons, REMOVE);
+        AArray.each(instance._buttons, function(button) {
+            // To avoid memory leak caused by ghost button references, clear
+            // its reference from the input element first
+            button.getData('btn-search-cancel').clearData('btn-search-cancel');
+            button.remove();
+        });
+
         (new A.EventHandle(instance._eventHandles)).detach();
     },
 
     /**
-     * Delegates events on the UI. Lifecycle.
+     * Bind events on the UI. Lifecycle.
      *
-     * @method bindDelegateUI
+     * @method bindUI
      */
-    bindDelegateUI: function() {
+    bindUI: function() {
         var instance = this,
-            container = instance.get(CONTAINER),
-            trigger = instance.get(TRIGGER);
+            container = instance.get('container'),
+            trigger = instance.get('trigger');
 
         instance._eventHandles = [
-                container.delegate(
-                    [FOCUS, INPUT],
-                A.debounce(instance._onUserInteraction, 50, instance), trigger)
-            ];
+            container.delegate(
+                ['focus', 'input'],
+                A.debounce(instance._onUserInteraction, 50, instance), trigger),
+            container.delegate('blur',
+                A.debounce(instance._onBlur, 25, instance), trigger),
+            // YUI implementation for the windowresize synthetic event do not
+            // support Y.on('windowresize', fn, context) binding, therefore
+            // should be wrapped using Y.bind.
+            A.on('windowresize', A.bind(instance._onWindowResize, instance))
+        ];
     },
 
     /**
@@ -111,22 +113,41 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
      */
     getButtonForElement: function(element) {
         var instance = this,
-            button = element.getData(_NAME);
+            button = element.getData('btn-search-cancel');
 
         if (!button) {
             button = A.Node.create(
                 A.Lang.sub(
                     instance.TEMPLATE, {
-                        iconClass: instance.get(ICON_CLASS),
-                        zIndex: instance.get(Z_INDEX)
+                        iconClass: instance.get('iconClass'),
+                        zIndex: instance.get('zIndex')
                     }));
 
-            element.setData(_NAME, button);
             instance._buttons.push(button.hide());
-            button.on(CLICK, instance._onButtonClick, instance, element);
+
+            button.setData('btn-search-cancel', element);
+            element.setData('btn-search-cancel', button);
+
+            button.on('gesturemovestart', A.rbind('_onButtonClick', instance, element));
         }
 
         return button;
+    },
+
+    /**
+     * Fires when the input loses focus.
+     *
+     * @method _onBlur
+     * @param {EventFacade} event
+     * @protected
+     */
+    _onBlur: function(event) {
+        var instance = this,
+            button = instance.getButtonForElement(event.target);
+
+        if (button) {
+            button.hide();
+        }
     },
 
     /**
@@ -140,7 +161,11 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
     _onButtonClick: function(event, element) {
         var instance = this;
 
-        instance._syncButtonUI(element.val('').focus());
+        instance._syncButtonUI(element.val(''));
+
+        A.soon(function() {
+            element.focus();
+        });
     },
 
     /**
@@ -157,6 +182,23 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
     },
 
     /**
+     * Fires when the user resizes the browser window.
+     *
+     * @method _onWindowResize
+     * @param event
+     * @Protected
+     */
+    _onWindowResize: function() {
+        var instance = this;
+
+        AArray.each(instance._buttons, function(button) {
+            if (!button.hasClass('hide')) {
+                instance._syncButtonUI(button.getData('btn-search-cancel'));
+            }
+        });
+    },
+
+    /**
      * Positions the cancel search button and aligns it with the passed
      * `element`.
      *
@@ -168,7 +210,8 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
         var instance = this,
             button = instance.getButtonForElement(element),
             gutter,
-            buttonRegion,
+            buttonHeight,
+            buttonWidth,
             elementRegion;
 
         if (!element.val()) {
@@ -176,14 +219,23 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
             return;
         }
 
-        A.one(element).insert(button.show(), 'after');
-        gutter = instance.get(GUTTER);
-        buttonRegion = button.get(REGION);
-        elementRegion = element.get(REGION);
+        element.insert(button.show(), 'before');
+        gutter = instance.get('gutter');
+        elementRegion = element.get('region');
+
+        buttonHeight = this.get('iconHeight');
+        if (!Lang.isNumber(buttonHeight)) {
+            buttonHeight = button.get('offsetHeight');
+        }
+
+        buttonWidth = this.get('iconWidth');
+        if (!Lang.isNumber(buttonWidth)) {
+            buttonWidth = button.get('offsetWidth');
+        }
 
         button.setXY([
-                elementRegion.right - buttonRegion.width + gutter[0],
-                elementRegion.top + elementRegion.height / 2 - buttonRegion.height / 2 + gutter[1]]);
+                elementRegion.right - buttonWidth + gutter[0],
+                elementRegion.top + elementRegion.height / 2 - buttonHeight / 2 + gutter[1]]);
     }
 }, {
     /**
@@ -226,12 +278,38 @@ var ButtonSearchCancel = A.Base.create(_NAME, A.Base, [], {
          * Icon CSS class to be used on the search cancel button.
          *
          * @attribute iconClass
-         * @default 'icon-remove'
+         * @default 'glyphicon glyphicon-remove'
          * @type {String}
          */
         iconClass: {
             validator: Lang.isString,
-            value: 'icon-remove'
+            value: 'glyphicon glyphicon-remove'
+        },
+
+        /**
+         * Defines the width of the button. Useful when an async request
+         * for resource file (image or font for example) may be necessary
+         * before calculating the button's width.
+         *
+         * @attribute iconWidth
+         * @default 24
+         * @type {Number}
+         */
+        iconWidth: {
+            value: 24
+        },
+
+        /**
+         * Defines the height of the button. Useful when an async request
+         * for resource file (image or font for example) may be necessary
+         * before calculating the button's height.
+         *
+         * @attribute iconHeight
+         * @default 30
+         * @type {Number}
+         */
+        iconHeight: {
+            value: 30
         },
 
         /**

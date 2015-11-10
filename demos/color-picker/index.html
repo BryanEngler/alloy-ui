@@ -2,6 +2,7 @@
 
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../../build/aui-css/css/bootstrap.css">
     <style>
         .label-option {
@@ -16,7 +17,7 @@
 
 <body class="yui3-skin-sam">
 
-<div id="wrapper">
+<div id="wrapper" class="container">
     <h1>Alloy - ColorPicker Palettes Demo</h1>
 
     <h3>Palette</h3>
@@ -41,16 +42,16 @@
                 items: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
                 on: {
                     enter: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     },
                     leave: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     },
                     select: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     },
                     unselect: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     }
                 },
                 toggleSelection: false
@@ -64,16 +65,16 @@
             var colorPalette = new Y.ColorPalette({
                 on: {
                     enter: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     },
                     leave: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     },
                     select: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     },
                     unselect: function(event) {
-                        console.log(event.type);
+                        Y.log(event.type);
                     }
                 }
             }).render('#colorPalette');
@@ -101,14 +102,14 @@
 
                 hsvPalette = new hsvClass(
                     {
-                        controls: controlsCheckbox.get('checked'),
+                        controls: controlsCheckbox.get('checked')
                     }
                 ).render('#hsvPalette');
 
                 hsvPalette.on('selectedChange', function (event) {
-                    console.log('via selected: ' + hsvPalette.get('selected'));
+                    Y.log('via selected: ' + hsvPalette.get('selected'));
 
-                    console.log('via new val: ' +event.newVal);
+                    Y.log('via new val: ' +event.newVal);
                 });
             }
 

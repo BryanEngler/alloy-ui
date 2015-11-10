@@ -4,25 +4,17 @@
  * @module aui-audio
  */
 
-var AObject = A.Object,
-    Lang = A.Lang,
+var Lang = A.Lang,
     UA = A.UA,
     DOC = A.config.doc,
 
-    NAME = 'audio',
+    owns = A.Object.owns,
 
     getClassName = A.getClassName,
 
-    CSS_AUDIO_NODE = getClassName(NAME, 'node'),
+    CSS_AUDIO_NODE = getClassName('audio', 'node'),
 
     DEFAULT_PLAYER_PATH = A.config.base + 'aui-audio/assets/player.swf',
-    FIXED_ATTRIBUTES = 'fixedAttributes',
-    FLASH_VARS = 'flashVars',
-    MP3 = 'mp3',
-    OGG_URL = 'oggUrl',
-    SRC = 'src',
-    SWF_URL = 'swfUrl',
-    URL = 'url',
 
     REGEX_FILE_EXTENSION = /\.([^\.]+)$/;
 
@@ -32,6 +24,7 @@ var AObject = A.Object,
  * Check the [live demo](http://alloyui.com/examples/audio/).
  *
  * @class A.Audio
+ * @extends A.Component
  * @param {Object} config Object literal specifying widget configuration
  *     properties.
  * @constructor
@@ -46,7 +39,7 @@ var AudioImpl = A.Component.create({
      * @type String
      * @static
      */
-    NAME: NAME,
+    NAME: 'audio',
 
     /**
      * Static property used to define the default attribute
@@ -59,15 +52,27 @@ var AudioImpl = A.Component.create({
     ATTRS: {
 
         /**
-         * URL used by Audio to play.
+         * Variables used by Flash player.
          *
-         * @attribute url
-         * @default ''
-         * @type String
+         * @attribute flashVars
+         * @default {}
+         * @type Object
          */
-        url: {
-            value: '',
-            validator: Lang.isString
+        flashVars: {
+            value: {},
+            validator: Lang.isObject
+        },
+
+        /**
+         * An additional list of attributes.
+         *
+         * @attribute fixedAttributes
+         * @default {}
+         * @type Object
+         */
+        fixedAttributes: {
+            value: {},
+            validator: Lang.isObject
         },
 
         /**
@@ -83,14 +88,26 @@ var AudioImpl = A.Component.create({
         },
 
         /**
-         * The type of audio.
+         * If `true` the render phase will be automatically invoked
+         * preventing the `.render()` manual call.
          *
-         * @attribute type
-         * @default mp3
+         * @attribute render
+         * @default true
+         * @type Boolean
+         */
+        render: {
+            value: true,
+            validator: Lang.isBoolean
+        },
+
+        /**
+         * Sets the `aria-role` for Audio.
+         *
+         * @attribute role
          * @type String
          */
-        type: {
-            value: MP3,
+        role: {
+            value: 'application',
             validator: Lang.isString
         },
 
@@ -132,40 +149,41 @@ var AudioImpl = A.Component.create({
         },
 
         /**
-         * An additional list of attributes.
+         * The type of audio.
          *
-         * @attribute fixedAttributes
-         * @default {}
-         * @type Object
+         * @attribute type
+         * @default mp3
+         * @type String
          */
-        fixedAttributes: {
-            value: {},
-            validator: Lang.isObject
+        type: {
+            value: 'mp3',
+            validator: Lang.isString
         },
 
         /**
-         * Variables used by Flash player.
+         * URL used by Audio to play.
          *
-         * @attribute flashVars
-         * @default {}
-         * @type Object
+         * @attribute url
+         * @default ''
+         * @type String
          */
-        flashVars: {
-            value: {},
-            validator: Lang.isObject
+        url: {
+            value: '',
+            validator: Lang.isString
         },
 
         /**
-         * If `true` the render phase will be automatically invoked
-         * preventing the `.render()` manual call.
+         * Boolean indicating if use of the WAI-ARIA Roles and States
+         * should be enabled.
          *
-         * @attribute render
+         * @attribute useARIA
          * @default true
          * @type Boolean
          */
-        render: {
+        useARIA: {
             value: true,
-            validator: Lang.isBoolean
+            validator: Lang.isBoolean,
+            writeOnce: 'initOnly'
         }
     },
 
@@ -177,7 +195,7 @@ var AudioImpl = A.Component.create({
      * @type Array
      * @static
      */
-    BIND_UI_ATTRS: [URL, OGG_URL, SWF_URL, FIXED_ATTRIBUTES, FLASH_VARS],
+    BIND_UI_ATTRS: ['url', 'oggUrl', 'swfUrl', 'fixedAttributes', 'flashVars'],
 
     /**
      * Static property used to define the attributes
@@ -187,7 +205,7 @@ var AudioImpl = A.Component.create({
      * @type Array
      * @static
      */
-    SYNC_UI_ATTRS: [URL, OGG_URL],
+    SYNC_UI_ATTRS: ['url', 'oggUrl'],
 
     prototype: {
 
@@ -203,7 +221,7 @@ var AudioImpl = A.Component.create({
             instance._renderAudioTask = A.debounce(instance._renderAudio, 1, instance);
             instance._renderSwfTask = A.debounce(instance._renderSwf, 1, instance);
 
-            instance._renderAudio(!instance.get(OGG_URL));
+            instance._renderAudio(!instance.get('oggUrl'));
         },
 
         /**
@@ -215,11 +233,34 @@ var AudioImpl = A.Component.create({
         bindUI: function() {
             var instance = this;
 
-            instance.publish(
-                'audioReady', {
+            instance.publish({
+                audioReady: {
                     fireOnce: true
-                }
-            );
+                },
+                pause: {},
+                play: {}
+            });
+
+            instance._audio.on({
+                pause: instance._onPause,
+                play: instance._onPlay
+            });
+        },
+
+        /**
+         * Sync the Audio UI. Lifecycle.
+         *
+         * @method syncUI
+         * @protected
+         */
+        syncUI: function() {
+            var instance = this;
+
+            if (instance.get('useARIA')) {
+                instance.plug(A.Plugin.Aria, {
+                    roleName: instance.get('role')
+                });
+            }
         },
 
         /**
@@ -262,6 +303,32 @@ var AudioImpl = A.Component.create({
         },
 
         /**
+         * Fires on video pause event fires.
+         *
+         * @method _onPause
+         * @param {EventFacade} event
+         * @protected
+         */
+        _onPause: function (event) {
+            this.fire('play', {
+                cropType: event.type
+            });
+        },
+
+        /**
+         * Fires on video play event fires.
+         *
+         * @method _onPlay
+         * @param {EventFacade} event
+         * @protected
+         */
+        _onPlay: function (event) {
+            this.fire('pause', {
+                cropType: event.type
+            });
+        },
+
+        /**
          * Create `source` element
          * using passed type attribute.
          *
@@ -286,10 +353,10 @@ var AudioImpl = A.Component.create({
         _renderSwf: function() {
             var instance = this;
 
-            var swfUrl = instance.get(SWF_URL);
+            var swfUrl = instance.get('swfUrl');
 
             if (swfUrl) {
-                var flashVars = instance.get(FLASH_VARS);
+                var flashVars = instance.get('flashVars');
 
                 instance._setMedia(flashVars);
 
@@ -312,12 +379,12 @@ var AudioImpl = A.Component.create({
                     movie = '<param name="movie" value="' + swfUrl + '"/>';
                 }
 
-                var fixedAttributes = instance.get(FIXED_ATTRIBUTES);
+                var fixedAttributes = instance.get('fixedAttributes');
 
                 var fixedAttributesParam = [];
 
                 for (var attributeName in fixedAttributes) {
-                    if (AObject.owns(fixedAttributes, attributeName)) {
+                    if (owns(fixedAttributes, attributeName)) {
                         fixedAttributesParam.push('<param name="', attributeName, '" value="', fixedAttributes[
                             attributeName], '" />');
                     }
@@ -386,8 +453,8 @@ var AudioImpl = A.Component.create({
         _setMedia: function(flashVars) {
             var instance = this;
 
-            if (!AObject.owns(flashVars, MP3) && !AObject.owns(flashVars, 'mp4') && !AObject.owns(flashVars, 'flv')) {
-                var audioUrl = instance.get(URL);
+            if (!owns(flashVars, 'mp3') && !owns(flashVars, 'mp4') && !owns(flashVars, 'flv')) {
+                var audioUrl = instance.get('url');
 
                 var type = instance.get('type');
 
@@ -464,7 +531,7 @@ var AudioImpl = A.Component.create({
                         instance._sourceOgg = sourceOgg;
                     }
 
-                    sourceOgg.attr(SRC, val);
+                    sourceOgg.attr('src', val);
                 }
             }
         },
@@ -492,13 +559,13 @@ var AudioImpl = A.Component.create({
         _uiSetUrl: function(val) {
             var instance = this;
 
-            var oggUrl = instance.get(OGG_URL);
+            var oggUrl = instance.get('oggUrl');
             var audio = instance._audio;
 
             var sourceMp3 = instance._sourceMp3;
 
             if (UA.gecko && !instance._usingAudio()) {
-                if (sourceMp3 !== null) {
+                if (sourceMp3) {
                     sourceMp3.remove(true);
 
                     instance._sourceMp3 = null;
@@ -514,7 +581,7 @@ var AudioImpl = A.Component.create({
                         instance._sourceMp3 = sourceMp3;
                     }
 
-                    sourceMp3.attr(SRC, val);
+                    sourceMp3.attr('src', val);
                 }
             }
 

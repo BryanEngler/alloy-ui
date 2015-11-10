@@ -1,15 +1,4 @@
-var ALIGN = 'align',
-    BOTTOM = 'bottom',
-    BOUNDING_BOX = 'boundingBox',
-    CONSTRAIN = 'constrain',
-    LEFT = 'left',
-    POSITION = 'position',
-    POSITION_CHANGE = 'positionChange',
-    RENDERED = 'rendered',
-    RIGHT = 'right',
-    TOP = 'top',
-
-    getClassName = A.getClassName;
+var getClassName = A.getClassName;
 
 /**
  * Widget extension, which can be used to suggest alignment points based on
@@ -36,15 +25,13 @@ PositionAlignSuggestion.ATTRS = {
      * Determine the position of the tooltip.
      *
      * @attribute position
-     * @default bottom
+     * @default top
      * @type {String}
      */
     position: {
-        validator: function(val) {
-            return val === BOTTOM || val === TOP || val === LEFT ||
-                val === RIGHT;
-        },
-        value: TOP
+        getter: '_getPosition',
+        validator: '_validatePosition',
+        value: 'top'
     }
 };
 
@@ -71,19 +58,21 @@ A.mix(PositionAlignSuggestion.prototype, {
      * instantiation. Lifecycle.
      *
      * @method initializer
+     * @protected
      */
     initializer: function(config) {
         var instance = this;
 
         if (config && config.align && config.align.points) {
             instance._hasAlignmentPoints = true;
+            instance._setPositionAccordingPoints();
         }
 
         A.on(instance._onUISetAlignPAS, instance, '_uiSetAlign');
 
         A.after(instance._afterRenderUIPAS, instance, 'renderUI');
 
-        instance.after(POSITION_CHANGE, instance._afterPositionChangePAS);
+        instance.after('positionChange', instance._afterPositionChangePAS);
     },
 
     /**
@@ -96,7 +85,7 @@ A.mix(PositionAlignSuggestion.prototype, {
         var instance = this,
             align;
 
-        align = instance.get(ALIGN) || {};
+        align = instance.get('align') || {};
 
         if (alignNode) {
             align.node = alignNode;
@@ -104,10 +93,10 @@ A.mix(PositionAlignSuggestion.prototype, {
 
         if (!instance._hasAlignmentPoints) {
             align.points = instance._getAlignPointsSuggestion(
-                instance.get(POSITION));
+                instance.get('position'));
         }
 
-        instance.set(ALIGN, align);
+        instance.set('align', align);
     },
 
     /**
@@ -133,7 +122,7 @@ A.mix(PositionAlignSuggestion.prototype, {
     _afterRenderUIPAS: function() {
         var instance = this;
 
-        instance._uiSetPosition(instance.get(POSITION));
+        instance._uiSetPosition(instance.get('position'));
     },
 
     /**
@@ -165,20 +154,51 @@ A.mix(PositionAlignSuggestion.prototype, {
      */
     _findBestPosition: function(node) {
         var instance = this,
-            position = instance.get(POSITION),
-            testPositions = [position, TOP, BOTTOM, LEFT, RIGHT];
+            position = instance.get('position'),
+            testPositions = [position, 'top', 'bottom', 'right', 'left'],
+            trigger = A.one(node);
 
-        testPositions = A.Array.dedupe(testPositions);
+        if (trigger && !trigger.inViewportRegion()) {
+            return instance._findBestPositionOutsideViewport(trigger);
+        } else {
+            testPositions = A.Array.dedupe(testPositions);
 
-        A.Array.some(testPositions, function(testPosition) {
-            if (instance._canWidgetAlignToNode(node, testPosition)) {
-                position = testPosition;
-
-                return true;
-            }
-        });
+            A.Array.some(testPositions, function(testPosition) {
+                if (instance._canWidgetAlignToNode(trigger, testPosition)) {
+                    position = testPosition;
+                    return true;
+                }
+            });
+        }
 
         return position;
+    },
+
+    /**
+     * Finds the better widget's position when its anchor is outside
+     * the view port.
+     *
+     * @method _findBestPositionOutsideViewport
+     * @param node
+     * @protected
+     */
+    _findBestPositionOutsideViewport: function(node) {
+        var instance = this,
+            nodeRegion = instance._getRegion(node),
+            region = instance._getRegion();
+
+        if (nodeRegion.top < region.top) {
+            return 'bottom';
+        }
+        else if (nodeRegion.bottom > region.bottom) {
+            return 'top';
+        }
+        else if (nodeRegion.right > region.right) {
+            return 'left';
+        }
+        else if (nodeRegion.left < region.left) {
+            return 'right';
+        }
     },
 
     /**
@@ -193,6 +213,21 @@ A.mix(PositionAlignSuggestion.prototype, {
     },
 
     /**
+     * Set the `position` attribute.
+     *
+     * @method _getPosition
+     * @param {Number} val
+     * @protected
+     */
+    _getPosition: function(val) {
+        if (A.Lang.isFunction(val)) {
+            val = val.call(this);
+        }
+
+        return val;
+    },
+
+    /**
      * Fire before `_uiSetAlign` method.
      *
      * @method _onUISetAlignPAS
@@ -203,19 +238,37 @@ A.mix(PositionAlignSuggestion.prototype, {
         var instance = this,
             position;
 
-        if (!instance.get(CONSTRAIN) || !instance.get(RENDERED)) {
+        if (!instance.get('constrain')) {
             return;
         }
 
         position = instance._findBestPosition(node);
 
         instance._syncPositionUI(
-            position, instance._lastPosition || instance.get(POSITION));
+            position, instance._lastPosition || instance.get('position'));
 
         instance._lastPosition = position;
 
         return new A.Do.AlterArgs(
             null, [node, instance._getAlignPointsSuggestion(position)]);
+    },
+
+    /**
+     * Sets the position according to the align points initially defined.
+     *
+     * @method _setPositionAccordingPoints
+     * @protected
+     */
+    _setPositionAccordingPoints: function() {
+        var instance = this,
+            points = instance.get('align').points;
+
+        A.Object.some(instance.POSITION_ALIGN_SUGGESTION, function(value, key) {
+            if (points[0] === value[0] && points[1] === value[1]) {
+                instance.set('position', key);
+                return true;
+            }
+        });
     },
 
     /**
@@ -228,7 +281,7 @@ A.mix(PositionAlignSuggestion.prototype, {
      */
     _syncPositionUI: function(val, prevVal) {
         var instance = this,
-            boundingBox = instance.get(BOUNDING_BOX);
+            boundingBox = instance.get('boundingBox');
 
         if (prevVal) {
             boundingBox.removeClass(getClassName(prevVal));
@@ -250,6 +303,23 @@ A.mix(PositionAlignSuggestion.prototype, {
         instance._syncPositionUI(val, prevVal);
 
         instance.suggestAlignment();
+    },
+
+    /**
+     * Validates the value of `position` attribute.
+     *
+     * @method _validatePosition
+     * @param value
+     * @protected
+     * @return {Boolean} True only if value is 'bottom', 'top', 'left'
+     *     or 'right'.
+     */
+    _validatePosition: function(val) {
+        if (A.Lang.isFunction(val)) {
+            val = val.call(this);
+        }
+
+        return (val === 'bottom' || val === 'top' || val === 'left' || val === 'right');
     }
 });
 

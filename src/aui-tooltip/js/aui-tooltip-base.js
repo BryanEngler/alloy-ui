@@ -6,23 +6,6 @@
 
 var Lang = A.Lang,
 
-    BODY_CONTENT = 'bodyContent',
-    BOUNDING_BOX = 'boundingBox',
-    CONTENT_BOX = 'contentBox',
-    DURATION = 'duration',
-    FORMATTER = 'formatter',
-    HOVER = 'hover',
-    IN = 'in',
-    MOUSEENTER = 'mouseenter',
-    OPACITY = 'opacity',
-    STICK_DURATION = 'stickDuration',
-    TITLE = 'title',
-    TOOLTIP = 'tooltip',
-    TRIGGER = 'trigger',
-    VISIBLE = 'visible',
-
-    _DATA_TITLE = 'data-title',
-
     getClassName = A.getClassName,
 
     CSS_TOOLTIP_ARROW = getClassName('tooltip-arrow'),
@@ -44,7 +27,7 @@ var Lang = A.Lang,
  * @include http://alloyui.com/examples/tooltip/basic-markup.html
  * @include http://alloyui.com/examples/tooltip/basic.js
  */
-A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
+A.Tooltip = A.Base.create('tooltip', A.Widget, [
     A.WidgetCssClass,
     A.WidgetPosition,
     A.WidgetStdMod,
@@ -53,16 +36,10 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
     A.WidgetPositionAlign,
     A.WidgetPositionAlignSuggestion,
     A.WidgetPositionConstrain,
+    A.WidgetStack,
+    A.WidgetTransition,
     A.WidgetTrigger
 ], {
-    /**
-     * Stores the `Y.later` context object.
-     *
-     * @property _hideTimer
-     * @type {Object}
-     * @protected
-     */
-    _hideTimer: null,
 
     /**
      * Construction logic executed during Tooltip instantiation. Lifecycle.
@@ -73,8 +50,21 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
     initializer: function() {
         var instance = this;
 
-        A.after(instance._afterUiSetTrigger, instance, '_uiSetTrigger');
-        A.after(instance._afterUiSetVisible, instance, '_uiSetVisible');
+        instance._eventHandles = [
+            A.after(instance._afterUiSetTrigger, instance, '_uiSetTrigger'),
+            A.on('scroll', A.debounce(instance._onScroll, 100, instance)),
+            A.on('windowresize', A.bind(instance._onResize, instance))
+        ];
+    },
+
+    /**
+     * Destructor lifecycle implementation for the `Tooltip` class.
+     *
+     * @method destructor
+     * @protected
+     */
+    destructor: function() {
+        (new A.EventHandle(this._eventHandles)).detach();
     },
 
     /**
@@ -85,13 +75,11 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      */
     renderUI: function() {
         var instance = this,
-            boundingBox = instance.get(BOUNDING_BOX),
-            contentBox = instance.get(CONTENT_BOX);
+            boundingBox = instance.get('boundingBox'),
+            contentBox = instance.get('contentBox');
 
         contentBox.addClass(CSS_TOOLTIP_INNER);
         boundingBox.append(A.Tooltip.TEMPLATES.arrow);
-
-        instance._afterUiSetVisible(instance.get(VISIBLE));
     },
 
     /**
@@ -102,34 +90,22 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      */
     bindUI: function() {
         var instance = this,
-            trigger = instance.get(TRIGGER);
+            trigger = instance.get('trigger');
 
         // Do not bind the synthetic hover event to the widget dom events
         // wrapper api. Hover bind method has a different method signature which
         // is not handled by widget yet. Bind to the `boundingBox` instead.
         if (trigger) {
             trigger.on(
-                HOVER,
+                'hover',
                 A.bind(instance._onBoundingBoxMouseenter, instance),
                 A.bind(instance._onBoundingBoxMouseleave, instance));
         }
 
-        instance.get(BOUNDING_BOX).on(
-            HOVER,
+        instance.get('boundingBox').on(
+            'hover',
             A.bind(instance._onBoundingBoxMouseenter, instance),
             A.bind(instance._onBoundingBoxMouseleave, instance));
-    },
-
-    /**
-     * Destructor lifecycle implementation for the `Tooltip` class.
-     *
-     * @method destructor
-     * @protected
-     */
-    destructor: function() {
-        var instance = this;
-
-        instance._clearHideTimer();
     },
 
     /**
@@ -139,18 +115,16 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      * @param val
      * @protected
      */
-    _afterUiSetVisible: function(val) {
+    _uiSetVisible: function(val) {
         var instance = this,
-            stickDuration = instance.get(STICK_DURATION);
+            boundingBox = instance.get('boundingBox');
+
+        instance._widgetUiSetVisible(val);
+
+        boundingBox.setStyle('opacity', val ? instance.get('opacity') : 0);
 
         if (val) {
-            instance._loadBodyContentFromTitle();
-            instance._maybeShow();
-        }
-        else {
-            if (!A.Lang.isNumber(stickDuration)) {
-                instance._maybeHide();
-            }
+            instance._loadTooltipContentFromTitle();
         }
     },
 
@@ -162,89 +136,68 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      * @protected
      */
     _afterUiSetTrigger: function(val) {
-        var instance = this;
-
-        instance.suggestAlignment(val);
+        this.suggestAlignment(val);
     },
 
     /**
-     * Helper method called to clear the close timer.
+     * If the HTML title attribute exists, copy its contents to data-title
+     * and remove it to prevent the browser's native tooltip.
      *
-     * @method _clearHideTimer
+     * @method _borrowTitleAttribute
+     * @private
+     */
+    _borrowTitleAttribute: function() {
+        var trigger = this.get('trigger'),
+            title = trigger.getAttribute('title');
+
+        if (title) {
+            trigger.setAttribute('data-title', title).removeAttribute('title');
+        }
+    },
+
+    /**
+     * Set tooltip section attribute.
+     *
+     * @method _setStdModSection
+     * @param {String | Node} val
      * @protected
      */
-    _clearHideTimer: function() {
-        var instance = this;
+    _setStdModSection: function(val) {
+        var formatter = this.get('formatter');
 
-        if (instance._hideTimer) {
-            instance._hideTimer.cancel();
-            instance._hideTimer = null;
+        if (Lang.isString(val)) {
+            if (formatter) {
+                val = formatter.call(this, val);
+            }
+
+            if (!this.get('html')) {
+                val = A.Escape.html(val);
+            }
         }
+
+        return val;
     },
 
     /**
      * Load tooltip content from trigger title attribute.
      *
-     * @method _loadBodyContentFromTitle
+     * @method _loadTooltipContentFromTitle
      * @protected
      */
-    _loadBodyContentFromTitle: function() {
-        var instance = this,
-            trigger,
-            dataTitle,
-            formatter,
+    _loadTooltipContentFromTitle: function() {
+        var trigger = this.get('trigger'),
             title;
 
-        formatter = instance.get(FORMATTER);
-        trigger = instance.get(TRIGGER);
-
-        dataTitle = trigger.getAttribute(_DATA_TITLE);
-        title = trigger.getAttribute(TITLE) || dataTitle;
-
-        if (formatter) {
-            title = formatter.call(instance, title);
+        if (!trigger) {
+            return;
         }
 
-        if (!dataTitle) {
-            trigger.removeAttribute(TITLE).setAttribute(_DATA_TITLE, title);
+        this._borrowTitleAttribute();
+
+        title = trigger.getAttribute('data-title');
+        if (title) {
+            this.setStdModContent(A.WidgetStdMod.BODY, title);
         }
-
-        instance.setStdModContent(
-            A.WidgetStdMod.BODY, trigger && title || instance.get(BODY_CONTENT));
-    },
-
-    /**
-     * Maybe hides the tooltip if `stickDuration` do not prevent.
-     *
-     * @method _maybeHide
-     * @protected
-     */
-    _maybeHide: function() {
-        var instance = this,
-            stickDuration;
-
-        stickDuration = instance.get(STICK_DURATION);
-
-        if (A.Lang.isNumber(stickDuration)) {
-            instance._hideTimer = A.later(
-                stickDuration, instance, instance._transition);
-        }
-        else {
-            instance._transition();
-            instance.hide();
-        }
-    },
-
-    /**
-     * Maybe shows the tooltip if `stickDuration` do not prevents.
-     *
-     * @method _maybeShow
-     * @protected
-     */
-    _maybeShow: function() {
-        var instance = this;
-
-        instance._transition(true);
     },
 
     /**
@@ -255,9 +208,7 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      * @protected
      */
     _onBoundingBoxMouseenter: function() {
-        var instance = this;
-
-        instance._clearHideTimer();
+        this.show();
     },
 
     /**
@@ -268,37 +219,30 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      * @protected
      */
     _onBoundingBoxMouseleave: function() {
-        var instance = this;
-
-        instance._maybeHide();
+        this.hide();
     },
 
     /**
-     * Shows or hides the tooltip depending on the passed parameter, when
-     * no parameter is specified the default behavior is to hide the tooltip.
+     * Fired after the window is resized.
      *
-     * @method _transition
-     * @param  {Boolean} fadeIn When `true`, fades in the tooltip, otherwise
-     *     fades out.
+     * @method _onResize
      * @protected
      */
-    _transition: function(fadeIn) {
-        var instance = this,
-            boundingBox = instance.get(BOUNDING_BOX);
+    _onResize: function() {
+        this.suggestAlignment(this.get('trigger'));
+    },
 
-        boundingBox.transition({
-                duration: instance.get(DURATION),
-                opacity: fadeIn ? instance.get(OPACITY) : 0
-            },
-            function() {
-                boundingBox.toggleClass(IN, fadeIn);
+    /**
+     * Scroll event listener function.
+     *
+     * @method _onScroll
+     * @protected
+     */
+    _onScroll: function() {
+        this.suggestAlignment(this.get('trigger'));
+    },
 
-                if (!fadeIn) {
-                    instance.hide();
-                }
-            }
-        );
-    }
+    _widgetUiSetVisible: A.Widget.prototype._uiSetVisible
 }, {
 
     /**
@@ -308,7 +252,7 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      * @type String
      * @static
      */
-    CSS_PREFIX: getClassName(TOOLTIP),
+    CSS_PREFIX: getClassName('tooltip'),
 
     /**
      * Static property used to define the default attribute
@@ -319,6 +263,26 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
      * @static
      */
     ATTRS: {
+        /**
+         * Determine if the transitions will animate or not.
+         *
+         * @attribute animated
+         * @default true
+         * @type Boolean
+         * @writeOnce
+         */
+        animated: {
+            value: true
+        },
+
+        /**
+         * @attribute bodyContent
+         * @type {String | Node}
+         */
+        bodyContent: {
+            setter: '_setStdModSection'
+        },
+
         /**
          * Determine the tooltip constrain node.
          *
@@ -331,15 +295,11 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
         },
 
         /**
-         * Determine the duration of the tooltip animation.
-         *
-         * @attribute duration
-         * @default 0.15
-         * @type {Number}
+         * @attribute footerContent
+         * @type {String | Node}
          */
-        duration: {
-            validator: Lang.isNumber,
-            value: 0.15
+        footerContent: {
+            setter: '_setStdModSection'
         },
 
         /**
@@ -353,28 +313,34 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
         },
 
         /**
-         * Determine the opacity of the tooltip.
+         * @attribute headerContent
+         * @type {String | Node}
+         */
+        headerContent: {
+            setter: '_setStdModSection'
+        },
+
+        /**
+         * Determines if the tooltip allows arbitary HTML or is plain text.
+         *
+         * @attribute html
+         * @default false
+         * @type Boolean
+         */
+        html: {
+            value: false,
+            validator: Lang.isBoolean
+        },
+
+        /**
+         * Determine the opacity.
          *
          * @attribute opacity
          * @default 0.8
          * @type {Number}
          */
         opacity: {
-            validator: Lang.isNumber,
             value: 0.8
-        },
-
-        /**
-         * Determine the duration for the tooltip to stick visibility after
-         * the mouse leaves the trigger element. By default the stick duration
-         * is not specified, therefore the tooltip starts the hide transition
-         * synchronously.
-         *
-         * @attribute stickDuration
-         * @type {Number}
-         */
-        stickDuration: {
-            validator: A.Lang.isNumber
         },
 
         /**
@@ -386,7 +352,19 @@ A.Tooltip = A.Base.create(TOOLTIP, A.Widget, [
          */
         triggerShowEvent: {
             validator: Lang.isString,
-            value: MOUSEENTER
+            value: 'mouseenter'
+        },
+
+        /**
+         * The z-index to apply to the Widgets boundingBox. Non-numerical values for
+         * zIndex will be converted to 0
+         *
+         * @attribute zIndex
+         * @default 1030
+         * @type Number
+         */
+        zIndex: {
+            value: 1030
         }
     },
 

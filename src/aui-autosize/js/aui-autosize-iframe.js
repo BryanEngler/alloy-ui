@@ -4,20 +4,9 @@
  * @module aui-autosize-iframe
  */
 
-var Lang = A.Lang,
-    isString = Lang.isString,
+var getClassName = A.getClassName,
 
-    AUTOSIZE_IFRAME = 'autosizeiframe',
-
-    getClassName = A.getClassName,
-
-    HEIGHT = 'height',
-    HIDDEN = 'hidden',
-    NO = 'no',
-    SCROLLING = 'scrolling',
-    WIDTH = 'width',
-
-    CSS_AUTOSIZE_IFRAME_MONITORED_HEIGHT = getClassName(AUTOSIZE_IFRAME, 'monitored', HEIGHT);
+    CSS_AUTOSIZE_IFRAME_MONITORED_HEIGHT = getClassName('autosizeiframe', 'monitored', 'height');
 
 /**
  * A base class for `A.AutosizeIframe`.
@@ -28,7 +17,7 @@ var Lang = A.Lang,
  *     properties.
  * @constructor
  */
-AutosizeIframe = A.Component.create({
+var AutosizeIframe = A.Component.create({
 
     /**
      * Static property provides a string to identify the class.
@@ -37,7 +26,7 @@ AutosizeIframe = A.Component.create({
      * @type {String}
      * @static
      */
-    NAME: AUTOSIZE_IFRAME,
+    NAME: 'autosizeiframe',
 
     /**
      * Static property provides a string to identify the namespace.
@@ -46,7 +35,7 @@ AutosizeIframe = A.Component.create({
      * @type {String}
      * @static
      */
-    NS: AUTOSIZE_IFRAME,
+    NS: 'autosizeiframe',
 
     /**
      * Static property used to define which component it extends.
@@ -296,7 +285,7 @@ AutosizeIframe = A.Component.create({
          * @param event
          * @protected
          */
-        _setInterval: function(event) {
+        _setInterval: function() {
             var instance = this;
 
             if (!instance._intervalId) {
@@ -316,10 +305,10 @@ AutosizeIframe = A.Component.create({
         _uiSetHeight: function(value) {
             var instance = this;
 
-            if (instance._iframeHeight != value) {
+            if (instance._iframeHeight !== value) {
                 instance._iframeHeight = value;
 
-                instance.node.setStyle(HEIGHT, value);
+                instance.node.setStyle('height', value);
             }
         },
 
@@ -363,7 +352,7 @@ AutosizeIframe = A.Component.create({
         _uiSetWidth: function(value) {
             var instance = this;
 
-            instance.node.setStyle(WIDTH, value);
+            instance.node.setStyle('width', value);
         },
 
         _iframeHeight: 0
@@ -385,7 +374,7 @@ A.mix(AutosizeIframe, {
         try {
             var iframeDoc;
 
-            if (iframeWin.nodeName && iframeWin.nodeName.toLowerCase() == 'iframe') {
+            if (iframeWin.nodeName && iframeWin.nodeName.toLowerCase() === 'iframe') {
                 iframeWin = iframeWin.contentWindow;
             }
             else if (A.instanceOf(iframeWin, A.Node)) {
@@ -412,17 +401,12 @@ A.mix(AutosizeIframe, {
     _getContentHeight: function(iframeWin, iframeDoc, fallbackHeight) {
         var contentHeight = null;
 
-        if (iframeDoc && iframeWin.location.href != 'about:blank') {
+        if (iframeDoc && iframeWin.location.href !== 'about:blank') {
             var docEl = iframeDoc.documentElement;
-            var iframeBody = iframeDoc.body;
 
-            if (docEl) {
-                docEl.style.overflowY = HIDDEN;
-            }
+            var docOffsetHeight = (docEl && Math.max(docEl.offsetHeight, docEl.scrollHeight)) || 0;
 
-            var docOffsetHeight = (iframeBody && iframeBody.offsetHeight) || 0;
-
-            var standardsMode = (iframeDoc.compatMode == 'CSS1Compat');
+            var standardsMode = (iframeDoc.compatMode === 'CSS1Compat');
 
             if (standardsMode && docOffsetHeight) {
                 contentHeight = docOffsetHeight;
@@ -473,7 +457,7 @@ A.mix(AutosizeIframe, {
                 docOffsetHeight = docEl.offsetHeight;
             }
 
-            if (docClientHeight != docOffsetHeight && iframeBody) {
+            if (docClientHeight !== docOffsetHeight && iframeBody) {
                 docOffsetHeight = iframeBody.offsetHeight;
                 docScrollHeight = iframeBody.scrollHeight;
             }

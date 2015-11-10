@@ -10,32 +10,11 @@ var Lang = A.Lang,
     isFunction = Lang.isFunction,
     isNumber = Lang.isNumber,
 
-    ACTIVE = 'active',
-    BOUNDING_BOX = 'boundingBox',
-    CHANGE_REQUEST = 'changeRequest',
-    CIRCULAR = 'circular',
-    CLICK = 'click',
-    CONTENT_BOX = 'contentBox',
-    CONTROL = 'control',
-    DISABLED = 'disabled',
-    FORMATTER = 'formatter',
-    HIDE = 'hide',
-    ITEMS = 'items',
-    LI = 'li',
-    NEXT = 'next',
-    OFFSET = 'offset',
-    PAGE = 'page',
-    PAGINATION = 'pagination',
-    PREV = 'prev',
-    SHOW_CONTROLS = 'showControls',
-    TOTAL = 'total',
-
     getCN = A.getClassName,
 
-    CSS_ACTIVE = getCN(ACTIVE),
-    CSS_DISABLED = getCN(DISABLED),
-    CSS_HIDE = getCN(HIDE),
-    CSS_PAGINATION_CONTROL = getCN(PAGINATION, CONTROL);
+    CSS_ACTIVE = getCN('active'),
+    CSS_DISABLED = getCN('disabled'),
+    CSS_PAGINATION_CONTROL = getCN('pagination', 'control');
 
 /**
  * A base class for Pagination, providing:
@@ -46,6 +25,7 @@ var Lang = A.Lang,
  * Check the [live demo](http://alloyui.com/examples/pagination/).
  *
  * @class A.Pagination
+ * @extends A.Component
  * @param {Object} config Object literal specifying widget configuration
  *     properties.
  * @constructor
@@ -60,7 +40,7 @@ var Pagination = A.Component.create({
      * @type String
      * @static
      */
-    NAME: PAGINATION,
+    NAME: 'pagination',
 
     /**
      * Static property used to define the default attribute configuration for
@@ -197,7 +177,7 @@ var Pagination = A.Component.create({
      * @type {Array}
      * @static
      */
-    BIND_UI_ATTRS: [OFFSET, SHOW_CONTROLS, TOTAL],
+    BIND_UI_ATTRS: ['offset', 'page', 'showControls', 'total'],
 
     /**
      * Static property used to define the UI attributes.
@@ -206,10 +186,10 @@ var Pagination = A.Component.create({
      * @type {Array}
      * @static
      */
-    UI_ATTRS: [PAGE],
+    UI_ATTRS: ['page'],
 
     prototype: {
-        CONTENT_TEMPLATE: '<ul></ul>',
+        CONTENT_TEMPLATE: '<ul class="pagination"></ul>',
         ITEM_TEMPLATE: '<li class="{cssClass}"><a href="#">{content}</a></li>',
         TOTAL_CONTROLS: 2,
 
@@ -224,7 +204,7 @@ var Pagination = A.Component.create({
          */
         syncUI: function() {
             var instance = this,
-                page = instance.get(PAGE);
+                page = instance.get('page');
 
             if (page > 0) {
                 instance._dispatchRequest({
@@ -241,13 +221,13 @@ var Pagination = A.Component.create({
          */
         bindUI: function() {
             var instance = this,
-                boundingBox = instance.get(BOUNDING_BOX);
+                boundingBox = instance.get('boundingBox');
 
             instance.on('pageChange', instance._onPageChange);
-            instance.publish(CHANGE_REQUEST, {
+            instance.publish('changeRequest', {
                 defaultFn: instance._defChangeRequest
             });
-            boundingBox.delegate(CLICK, instance._onClickItem, LI, instance);
+            boundingBox.delegate('click', instance._onClickItem, 'li', instance);
         },
 
         /**
@@ -259,7 +239,7 @@ var Pagination = A.Component.create({
         renderUI: function() {
             var instance = this;
 
-            instance._renderItemsUI(instance.get(TOTAL));
+            instance._renderItemsUI(instance.get('total'));
         },
 
         /**
@@ -274,7 +254,7 @@ var Pagination = A.Component.create({
             var instance = this;
 
             if (isNumber(i)) {
-                var items = instance.get(ITEMS);
+                var items = instance.get('items');
                 if (items) {
                     i = items.item(i);
                 }
@@ -293,7 +273,7 @@ var Pagination = A.Component.create({
         getOffsetPageNumber: function() {
             var instance = this;
 
-            return instance.get(OFFSET) + instance.get(PAGE);
+            return instance.get('offset') + instance.get('page');
         },
 
         /**
@@ -306,7 +286,7 @@ var Pagination = A.Component.create({
         getOffsetTotalPages: function() {
             var instance = this;
 
-            return instance.get(OFFSET) + instance.get(TOTAL);
+            return instance.get('offset') + instance.get('total');
         },
 
         /**
@@ -319,7 +299,7 @@ var Pagination = A.Component.create({
         getTotalItems: function() {
             var instance = this;
 
-            return instance.get(TOTAL) + instance.TOTAL_CONTROLS;
+            return instance.get('total') + instance.TOTAL_CONTROLS;
         },
 
         /**
@@ -329,16 +309,16 @@ var Pagination = A.Component.create({
          */
         next: function() {
             var instance = this,
-                total = instance.get(TOTAL);
+                total = instance.get('total');
 
             if (total === 0) {
                 return;
             }
 
-            var page = instance.get(PAGE);
+            var page = instance.get('page');
 
             instance._dispatchRequest({
-                page: (instance.get(CIRCULAR) && (page === total)) ? 1 : Math.min(total, ++page)
+                page: (instance.get('circular') && (page === total)) ? 1 : Math.min(total, ++page)
             });
 
             return instance;
@@ -351,16 +331,16 @@ var Pagination = A.Component.create({
          */
         prev: function() {
             var instance = this,
-                total = instance.get(TOTAL);
+                total = instance.get('total');
 
             if (total === 0) {
                 return;
             }
 
-            var page = instance.get(PAGE);
+            var page = instance.get('page');
 
             instance._dispatchRequest({
-                page: (instance.get(CIRCULAR) && (page === 1)) ? total : Math.max(1, --page)
+                page: (instance.get('circular') && (page === 1)) ? total : Math.max(1, --page)
             });
 
             return instance;
@@ -374,9 +354,11 @@ var Pagination = A.Component.create({
          * @param {Object} state
          */
         setState: function(state) {
-            var instance = this;
+            var instance = this,
+                page = state.page;
 
-            instance.set(PAGE, state.page);
+            instance.set('page', page);
+
             instance.lastState = state;
         },
 
@@ -417,7 +399,7 @@ var Pagination = A.Component.create({
         _dispatchRequest: function(state) {
             var instance = this;
 
-            instance.fire(CHANGE_REQUEST, {
+            instance.fire('changeRequest', {
                 lastState: instance.lastState,
                 state: state
             });
@@ -455,7 +437,7 @@ var Pagination = A.Component.create({
             var instance = this;
 
             if (!instance.items) {
-                instance.items = srcNode.all(LI);
+                instance.items = srcNode.all('li');
             }
             return instance.items;
         },
@@ -477,7 +459,7 @@ var Pagination = A.Component.create({
                 return;
             }
 
-            var items = instance.get(ITEMS),
+            var items = instance.get('items'),
                 index = items.indexOf(item),
                 lastIndex = items.size() - 1;
 
@@ -524,13 +506,13 @@ var Pagination = A.Component.create({
         _renderItemsUI: function(total) {
             var instance = this,
                 tpl = instance.ITEM_TEMPLATE,
-                formatter = instance.get(FORMATTER),
-                offset = instance.get(OFFSET),
+                formatter = instance.get('formatter'),
+                offset = instance.get('offset'),
                 i,
                 buffer = '';
 
             buffer += Lang.sub(tpl, {
-                content: instance.getString(PREV),
+                content: instance.getString('prev'),
                 cssClass: CSS_PAGINATION_CONTROL
             });
 
@@ -539,19 +521,19 @@ var Pagination = A.Component.create({
             }
 
             buffer += Lang.sub(tpl, {
-                content: instance.getString(NEXT),
+                content: instance.getString('next'),
                 cssClass: CSS_PAGINATION_CONTROL
             });
 
             var items = A.NodeList.create(buffer);
-            instance.set(ITEMS, items);
-            instance.get(CONTENT_BOX).setContent(items);
+            instance.set('items', items);
+            instance.get('contentBox').setContent(items);
 
             // When show controls is false, remove the first and last items from
             // the DOM in order to hide the controls, but keep the references
             // inside items NodeList in order to handle the items index the same
             // way when they are visible.
-            if (!instance.get(SHOW_CONTROLS)) {
+            if (!instance.get('showControls')) {
                 items.first().remove();
                 items.last().remove();
             }
@@ -576,13 +558,13 @@ var Pagination = A.Component.create({
          */
         _syncNavigationUI: function() {
             var instance = this,
-                items = instance.get(ITEMS);
+                items = instance.get('items');
 
             items.first().toggleClass(
-                CSS_DISABLED, instance.get(PAGE) === 1);
+                CSS_DISABLED, instance.get('page') === 1);
 
             items.last().toggleClass(
-                CSS_DISABLED, instance.get(PAGE) === instance.get(TOTAL));
+                CSS_DISABLED, instance.get('page') === instance.get('total'));
         },
 
         /**
@@ -592,10 +574,10 @@ var Pagination = A.Component.create({
          * @param {Number} val
          * @protected
          */
-        _uiSetOffset: function(val) {
+        _uiSetOffset: function() {
             var instance = this;
 
-            instance._renderItemsUI(instance.get(TOTAL));
+            instance._renderItemsUI(instance.get('total'));
         },
 
         /**
@@ -608,7 +590,7 @@ var Pagination = A.Component.create({
         _uiSetPage: function(val) {
             var instance = this;
 
-            if (!instance.get(CIRCULAR)) {
+            if (!instance.get('circular')) {
                 instance._syncNavigationUI();
             }
 
@@ -631,10 +613,10 @@ var Pagination = A.Component.create({
          * @param {Boolean} val
          * @protected
          */
-        _uiSetShowControls: function(val) {
+        _uiSetShowControls: function() {
             var instance = this;
 
-            instance._renderItemsUI(instance.get(TOTAL));
+            instance._renderItemsUI(instance.get('total'));
         },
 
         /**
