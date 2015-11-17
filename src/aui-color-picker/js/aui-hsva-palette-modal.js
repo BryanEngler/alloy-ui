@@ -5,17 +5,12 @@
  * @submodule aui-hsv-palette-modal
  */
 
-var AArray = A.Array,
-    AWidget = A.Widget,
+var AWidget = A.Widget,
     Lang = A.Lang,
 
     getClassName = A.getClassName,
 
     CSS_HSV_PALETTE_MODAL = getClassName('hsv-palette-modal'),
-
-    NAME = 'hsv-palette-modal',
-
-    EMPTY = '',
 
     /**
      * A base class for `HSVAPaletteModal`.
@@ -26,7 +21,7 @@ var AArray = A.Array,
      *     properties.
      * @constructor
      */
-    HSVAPaletteModal = A.Base.create(NAME, A.Modal, [A.WidgetCssClass, A.WidgetToggle], {
+    HSVAPaletteModal = A.Base.create('hsv-palette-modal', A.Modal, [A.WidgetCssClass, A.WidgetToggle], {
 
         /**
          * Construction logic executed during `HSVAPaletteModal` instantiation.
@@ -81,7 +76,7 @@ var AArray = A.Array,
             var instance = this,
                 body,
                 contentBox,
-                hsvClass,
+                HsvClass,
                 hsvOptions,
                 useAlpha;
 
@@ -91,17 +86,17 @@ var AArray = A.Array,
 
             useAlpha = hsvOptions.alpha;
 
-            hsvClass = A.HSVPalette;
+            HsvClass = A.HSVPalette;
 
             if (useAlpha) {
-                hsvClass = A.HSVAPalette;
+                HsvClass = A.HSVAPalette;
             }
 
             contentBox.addClass(CSS_HSV_PALETTE_MODAL);
 
             body = instance.getStdModNode(A.WidgetStdMod.BODY);
 
-            instance._hsvPalette = new hsvClass(hsvOptions).render(body);
+            instance._hsvPalette = new HsvClass(hsvOptions).render(body);
 
             if (instance.get('centered')) {
                 instance.align();
@@ -151,7 +146,7 @@ var AArray = A.Array,
             selected: {
                 getter: '_getSelected',
                 validator: Lang.isString,
-                value: EMPTY
+                value: ''
             }
         },
 
@@ -162,7 +157,7 @@ var AArray = A.Array,
          * @type {String}
          * @static
          */
-        CSS_PREFIX: getClassName(NAME),
+        CSS_PREFIX: getClassName('hsv-palette-modal'),
 
         /**
          * Static property provides a string to identify the class.
@@ -171,7 +166,7 @@ var AArray = A.Array,
          * @type {String}
          * @static
          */
-        NAME: NAME,
+        NAME: 'hsv-palette-modal',
 
         /**
          * Static property provides a string to identify the namespace.
@@ -180,7 +175,7 @@ var AArray = A.Array,
          * @type {String}
          * @static
          */
-        NS: NAME
+        NS: 'hsv-palette-modal'
     });
 
 A.HSVAPaletteModal = HSVAPaletteModal;

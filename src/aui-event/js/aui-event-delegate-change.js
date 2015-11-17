@@ -6,11 +6,7 @@
  */
 
 var AObject = A.Object,
-    Node = A.Node,
-    Selector = A.Selector,
-
-    EVENT_BEFOREACTIVATE = 'beforeactivate',
-    EVENT_CHANGE = 'change';
+    Selector = A.Selector;
 
 /**
  * Defines a new `change` event in the DOM event system.
@@ -18,7 +14,7 @@ var AObject = A.Object,
  * @event change
  */
 A.Event.define(
-    EVENT_CHANGE, {
+    'change', {
         /**
          * Implementation logic for subscription via `node.delegate`.
          *
@@ -143,8 +139,8 @@ A.Event.define(
 
             var handles = instance._prepareHandles(subscription, node);
 
-            handles[EVENT_BEFOREACTIVATE] = node.delegate(
-                EVENT_BEFOREACTIVATE,
+            handles.beforeactivate = node.delegate(
+                'beforeactivate',
                 function(event) {
                     var activeElement = event.target;
 
@@ -163,13 +159,13 @@ A.Event.define(
          * @param notifier
          * @protected
          */
-        _detachEvents: function(node, subscription, notifier) {
+        _detachEvents: function(node, subscription) {
             A.each(
                 subscription._handles,
-                function(events, node, handles) {
+                function(events) {
                     A.each(
                         events,
-                        function(handle, event, events) {
+                        function(handle) {
                             handle.detach();
                         }
                     );
@@ -187,13 +183,13 @@ A.Event.define(
          */
         _getEventName: A.cached(
             function(activeElement) {
-                var eventName = EVENT_CHANGE;
+                var eventName = 'change';
 
                 var tagName = activeElement.attr('tagName').toLowerCase();
 
                 var type = activeElement.attr('type').toLowerCase();
 
-                if (tagName == 'input' && (type == 'checkbox' || type == 'radio')) {
+                if (tagName === 'input' && (type === 'checkbox' || type === 'radio')) {
                     eventName = 'click';
                 }
 

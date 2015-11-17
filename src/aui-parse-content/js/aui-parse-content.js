@@ -16,23 +16,12 @@ var L = A.Lang,
     isString = L.isString,
 
     DOC = A.config.doc,
-
-    APPEND = 'append',
-    DOCUMENT_ELEMENT = 'documentElement',
-    FIRST_CHILD = 'firstChild',
-    HEAD = 'head',
-    HOST = 'host',
-    INNER_HTML = 'innerHTML',
     PADDING_NODE = '<div>_</div>',
-    PARSE_CONTENT = 'ParseContent',
-    QUEUE = 'queue',
-    SCRIPT = 'script',
-    SEMICOLON = ';',
-    SRC = 'src',
 
     SCRIPT_TYPES = {
         '': 1,
-        'text/javascript': 1
+        'text/javascript': 1,
+        'text/parsed': 1
     };
 
 /**
@@ -69,7 +58,7 @@ var ParseContent = A.Component.create({
      * @type String
      * @static
      */
-    NAME: PARSE_CONTENT,
+    NAME: 'ParseContent',
 
     /**
      * Static property provides a string to identify the namespace.
@@ -78,7 +67,7 @@ var ParseContent = A.Component.create({
      * @type String
      * @static
      */
-    NS: PARSE_CONTENT,
+    NS: 'ParseContent',
 
     /**
      * Static property used to define the default attribute
@@ -89,7 +78,6 @@ var ParseContent = A.Component.create({
      * @static
      */
     ATTRS: {
-
         /**
          * A queue of elements to be parsed.
          *
@@ -98,6 +86,18 @@ var ParseContent = A.Component.create({
          */
         queue: {
             value: null
+        },
+
+        /**
+         * When true, script nodes will not be removed from original content,
+         * instead the script type attribute will be set to `text/plain`.
+         *
+         * @attribute preserveScriptNodes
+         * @default false
+         */
+        preserveScriptNodes: {
+            validator: L.isBoolean,
+            value: false
         }
     },
 
@@ -125,7 +125,7 @@ var ParseContent = A.Component.create({
             ParseContent.superclass.initializer.apply(this, arguments);
 
             instance.set(
-                QUEUE,
+                'queue',
                 new A.AsyncQueue()
             );
 
@@ -140,11 +140,11 @@ var ParseContent = A.Component.create({
          */
         globalEval: function(data) {
             var doc = A.getDoc();
-            var head = doc.one(HEAD) || doc.get(DOCUMENT_ELEMENT);
+            var head = doc.one('head') || doc.get('documentElement');
 
             // NOTE: A.Node.create('<script></script>') doesn't work correctly
             // on Opera
-            var newScript = DOC.createElement(SCRIPT);
+            var newScript = DOC.createElement('script');
 
             newScript.type = 'text/javascript';
 
@@ -168,7 +168,7 @@ var ParseContent = A.Component.create({
         parseContent: function(content) {
             var instance = this;
 
-            var output = instance._clean(content);
+            var output = instance._extractScripts(content);
 
             instance._dispatch(output);
 
@@ -186,7 +186,7 @@ var ParseContent = A.Component.create({
         _addInlineScript: function(data) {
             var instance = this;
 
-            instance.get(QUEUE).add({
+            instance.get('queue').add({
                 args: data,
                 context: instance,
                 fn: instance.globalEval,
@@ -238,10 +238,11 @@ var ParseContent = A.Component.create({
          * @protected
          * @return {Object}
          */
-        _clean: function(content) {
-            var output = {};
-
-            var fragment = A.Node.create('<div></div>');
+        _extractScripts: function(content) {
+            var instance = this,
+                fragment = A.Node.create('<div></div>'),
+                output = {},
+                preserveScriptNodes = instance.get('preserveScriptNodes');
 
             // For PADDING_NODE, instead of fixing all tags in the content to be
             // "XHTML"-style, we make the firstChild be a valid non-empty tag,
@@ -251,7 +252,7 @@ var ParseContent = A.Component.create({
                 content = PADDING_NODE + content;
 
                 // create fragment from {String}
-                A.DOM.addHTML(fragment, content, APPEND);
+                A.DOM.addHTML(fragment, content, 'append');
             }
             else {
                 fragment.append(PADDING_NODE);
@@ -260,18 +261,24 @@ var ParseContent = A.Component.create({
                 fragment.append(content);
             }
 
-            output.js = fragment.all(SCRIPT).filter(function(script) {
-                return SCRIPT_TYPES[script.getAttribute('type').toLowerCase()];
+            output.js = fragment.all('script').filter(function(script) {
+                var includeScript = SCRIPT_TYPES[script.getAttribute('type').toLowerCase()];
+                if (preserveScriptNodes) {
+                    script.setAttribute('type', 'text/parsed');
+                }
+                return includeScript;
             });
 
-            output.js.each(
-                function(node, i) {
-                    node.remove();
-                }
-            );
+            if (!preserveScriptNodes) {
+                output.js.each(
+                    function(node) {
+                        node.remove();
+                    }
+                );
+            }
 
             // remove PADDING_NODE
-            fragment.get(FIRST_CHILD).remove();
+            fragment.get('firstChild').remove();
 
             output.fragment = fragment.get('childNodes').toFrag();
 
@@ -290,16 +297,16 @@ var ParseContent = A.Component.create({
         _dispatch: function(output) {
             var instance = this;
 
-            var queue = instance.get(QUEUE);
+            var queue = instance.get('queue');
 
             var scriptContent = [];
 
-            output.js.each(function(node, i) {
-                var src = node.get(SRC);
+            output.js.each(function(node) {
+                var src = node.get('src');
 
                 if (src) {
                     if (scriptContent.length) {
-                        instance._addInlineScript(scriptContent.join(SEMICOLON));
+                        instance._addInlineScript(scriptContent.join(';'));
 
                         scriptContent.length = 0;
                     }
@@ -327,7 +334,7 @@ var ParseContent = A.Component.create({
             });
 
             if (scriptContent.length) {
-                instance._addInlineScript(scriptContent.join(SEMICOLON));
+                instance._addInlineScript(scriptContent.join(';'));
             }
 
             queue.run();

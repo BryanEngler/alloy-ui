@@ -32,7 +32,8 @@
             "querystring-stringify",
             "aui-tree-data",
             "aui-tree-io",
-            "aui-tree-paginator"
+            "aui-tree-paginator",
+            "event-key"
         ]
     },
 
@@ -46,6 +47,7 @@
         "requires": [
             "dd-delegate",
             "dd-proxy",
+            "widget",
             "aui-tree-node",
             "aui-tree-paginator",
             "aui-tree-io"

@@ -29,28 +29,13 @@ var Lang = A.Lang,
     NODE_PROTO_SHOW = NODE_PROTO._show,
     NODELIST_PROTO = ANodeList.prototype,
 
-    STR_EMPTY = '',
+    ARRAY_EMPTY_STRINGS = ['', ''],
 
-    ARRAY_EMPTY_STRINGS = [STR_EMPTY, STR_EMPTY],
-
-    OFFSET = 'offset',
-
-    CSS_FORCE_OFFSET = getClassName('force', OFFSET),
     CSS_HIDE = getClassName('hide'),
-    CSS_UNSELECTABLE = getClassName('unselectable'),
-
-    CHILD_NODES = 'childNodes',
-    CREATE_DOCUMENT_FRAGMENT = 'createDocumentFragment',
-    INNER = 'inner',
-    INNER_HTML = 'innerHTML',
-    NEXT_SIBLING = 'nextSibling',
-    OUTER = 'outer',
-    PARENT_NODE = 'parentNode',
-    REGION = 'region',
+    CSS_UNSELECTABLE_VALUE = 'none',
+    CSS_SELECTABLE_VALUE = 'text',
 
     SUPPORT_CLONED_EVENTS = false,
-
-    VALUE = 'value',
 
     MAP_BORDER = {
         b: 'borderBottomWidth',
@@ -82,10 +67,10 @@ div.innerHTML = '   <table></table>&nbsp;';
 if (div.attachEvent && div.fireEvent) {
     div.attachEvent(
         'onclick',
-        function() {
+        function detach() {
             SUPPORT_CLONED_EVENTS = true;
 
-            div.detachEvent('onclick', arguments.callee);
+            div.detachEvent('onclick', detach);
         }
     );
 
@@ -132,44 +117,6 @@ var _setUnselectable = function(element, unselectable, noRecurse) {
 A.mix(NODE_PROTO, {
 
     /**
-     * Returns the current ancestors of the node element. If a selector is
-     * specified, the ancestors are filtered to match the selector.
-     *
-     * Example:
-     *
-     * ```
-     * A.one('#nodeId').ancestors('div');
-     * ```
-     *
-     * @method ancestors
-     * @param {String} selector A selector to filter the ancestor elements
-     *     against.
-     * @return {NodeList}
-     */
-    ancestors: function(selector) {
-        var instance = this;
-
-        var ancestors = [];
-        var currentEl = instance.getDOM();
-
-        while (currentEl && currentEl.nodeType !== 9) {
-            if (currentEl.nodeType === 1) {
-                ancestors.push(currentEl);
-            }
-
-            currentEl = currentEl.parentNode;
-        }
-
-        var nodeList = new A.all(ancestors);
-
-        if (selector) {
-            nodeList = nodeList.filter(selector);
-        }
-
-        return nodeList;
-    },
-
-    /**
      * Returns the current ancestors of the node element filtered by a
      * className. This is an optimized method for finding ancestors by a
      * specific CSS class name.
@@ -183,14 +130,20 @@ A.mix(NODE_PROTO, {
      * @method ancestorsByClassName
      * @param {String} className A selector to filter the ancestor elements
      *     against.
+     * @param {Boolean} testSelf optional Whether or not to include the element
+     * in the scan
      * @return {NodeList}
      */
-    ancestorsByClassName: function(className) {
+    ancestorsByClassName: function(className, testSelf) {
         var instance = this;
 
         var ancestors = [];
         var cssRE = new RegExp('\\b' + className + '\\b');
         var currentEl = instance.getDOM();
+
+        if (!testSelf) {
+            currentEl = currentEl.parentNode;
+        }
 
         while (currentEl && currentEl.nodeType !== 9) {
             if (currentEl.nodeType === 1 && cssRE.test(currentEl.className)) {
@@ -240,7 +193,9 @@ A.mix(NODE_PROTO, {
         else {
             if (isObject(name)) {
                 for (i in name) {
-                    instance.attr(i, name[i]);
+                    if (name.hasOwnProperty(i)) {
+                        instance.attr(i, name[i]);
+                    }
                 }
 
                 return instance;
@@ -282,7 +237,7 @@ A.mix(NODE_PROTO, {
                     var outerHTML = this.outerHTML();
 
                     outerHTML = outerHTML.replace(REGEX_IE8_ACTION, '="$1">').replace(REGEX_LEADING_WHITE_SPACE,
-                        STR_EMPTY);
+                        '');
 
                     clone = ANode.create(outerHTML);
                 }
@@ -321,7 +276,7 @@ A.mix(NODE_PROTO, {
      */
     center: function(val) {
         var instance = this,
-            nodeRegion = instance.get(REGION),
+            nodeRegion = instance.get('region'),
             x,
             y;
 
@@ -336,7 +291,7 @@ A.mix(NODE_PROTO, {
                 region = val;
             }
             else {
-                region = (A.one(val) || A.getBody()).get(REGION);
+                region = (A.one(val) || A.getBody()).get('region');
             }
 
             x = region.left + (region.width / 2);
@@ -412,7 +367,7 @@ A.mix(NODE_PROTO, {
      */
     getCenterXY: function() {
         var instance = this;
-        var region = instance.get(REGION);
+        var region = instance.get('region');
 
         return [(region.left + region.width / 2), (region.top + region.height / 2)];
     },
@@ -533,10 +488,10 @@ A.mix(NODE_PROTO, {
             length = args.length;
 
         if (length) {
-            this.set(INNER_HTML, args[0]);
+            this.set('innerHTML', args[0]);
         }
         else {
-            return this.get(INNER_HTML);
+            return this.get('innerHTML');
         }
 
         return this;
@@ -591,7 +546,7 @@ A.mix(NODE_PROTO, {
     placeAfter: function(newNode) {
         var instance = this;
 
-        return instance._place(newNode, instance.get(NEXT_SIBLING));
+        return instance._place(newNode, instance.get('nextSibling'));
     },
 
     /**
@@ -747,7 +702,14 @@ A.mix(NODE_PROTO, {
     selectable: function(noRecurse) {
         var instance = this;
 
-        instance.removeClass(CSS_UNSELECTABLE);
+        instance.setStyles({
+            '-webkit-user-select': CSS_SELECTABLE_VALUE,
+            '-khtml-user-select': CSS_SELECTABLE_VALUE,
+            '-moz-user-select': CSS_SELECTABLE_VALUE,
+            '-ms-user-select': CSS_SELECTABLE_VALUE,
+            '-o-user-select': CSS_SELECTABLE_VALUE,
+            'user-select': CSS_SELECTABLE_VALUE
+        });
 
         if (A.UA.ie || A.UA.opera) {
             _setUnselectable(instance._node, false, noRecurse);
@@ -850,7 +812,7 @@ A.mix(NODE_PROTO, {
      * @param {Function} callback A function to run after the visibility change.
      *     Optional.
      */
-    toggle: function(on, callback) {
+    toggle: function() {
         var instance = this;
 
         instance._toggleView.apply(instance, arguments);
@@ -868,7 +830,14 @@ A.mix(NODE_PROTO, {
     unselectable: function(noRecurse) {
         var instance = this;
 
-        instance.addClass(CSS_UNSELECTABLE);
+        instance.setStyles({
+            '-webkit-user-select': CSS_UNSELECTABLE_VALUE,
+            '-khtml-user-select': CSS_UNSELECTABLE_VALUE,
+            '-moz-user-select': CSS_UNSELECTABLE_VALUE,
+            '-ms-user-select': CSS_UNSELECTABLE_VALUE,
+            '-o-user-select': CSS_UNSELECTABLE_VALUE,
+            'user-select': CSS_UNSELECTABLE_VALUE
+        });
 
         if (A.UA.ie || A.UA.opera) {
             _setUnselectable(instance._node, true, noRecurse);
@@ -898,10 +867,10 @@ A.mix(NODE_PROTO, {
         var instance = this;
 
         if (isUndefined(value)) {
-            return instance.get(VALUE);
+            return instance.get('value');
         }
         else {
-            return instance.set(VALUE, value);
+            return instance.set('value', value);
         }
     },
 
@@ -969,7 +938,7 @@ A.mix(NODE_PROTO, {
             }
         }
 
-        return str.join(STR_EMPTY);
+        return str.join('');
     },
 
     /**
@@ -1065,7 +1034,7 @@ A.mix(NODE_PROTO, {
     _place: function(newNode, refNode) {
         var instance = this;
 
-        var parent = instance.get(PARENT_NODE);
+        var parent = instance.get('parentNode');
 
         if (parent) {
             if (isString(newNode)) {
@@ -1206,7 +1175,7 @@ NODE_PROTO._isHidden = function() {
 
 A.each(
  ['Height', 'Width'],
-    function(item, index, collection) {
+    function(item, index) {
         var sides = index ? 'lr' : 'tb';
 
         var dimensionType = item.toLowerCase();
@@ -1222,17 +1191,29 @@ A.each(
 
                 if (node) {
                     if ((!node.tagName && node.nodeType === 9) || node.alert) {
-                        dimension = instance.get(REGION)[dimensionType];
+                        dimension = instance.get('region')[dimensionType];
                     }
                     else {
-                        dimension = instance.get(OFFSET + item);
+                        dimension = instance.get('offset' + item);
 
                         if (!dimension) {
-                            instance.addClass(CSS_FORCE_OFFSET);
+                            var originalDisplay = instance.getStyle('display');
+                            var originalPosition = instance.getStyle('position');
+                            var originalVisibility = instance.getStyle('visibility');
 
-                            dimension = instance.get(OFFSET + item);
+                            instance.setStyles({
+                                display: 'block !important',
+                                position: 'absolute !important',
+                                visibility: 'hidden !important'
+                            });
 
-                            instance.removeClass(CSS_FORCE_OFFSET);
+                            dimension = instance.get('offset' + item);
+
+                            instance.setStyles({
+                                display: originalDisplay,
+                                position: originalPosition,
+                                visibility: originalVisibility
+                            });
                         }
 
                         if (dimension) {
@@ -1250,16 +1231,16 @@ A.each(
             return returnValue;
         };
 
-        NODE_PROTO[INNER + item] = function() {
+        NODE_PROTO['inner' + item] = function() {
             var instance = this;
 
             return instance[dimensionType]() + instance.getPadding(sides);
         };
 
-        NODE_PROTO[OUTER + item] = function(margin) {
+        NODE_PROTO['outer' + item] = function(margin) {
             var instance = this;
 
-            var innerSize = instance[INNER + item]();
+            var innerSize = instance['inner' + item]();
             var borderSize = instance.getBorderWidth(sides);
 
             var size = innerSize + borderSize;
@@ -1277,9 +1258,9 @@ if (!SUPPORT_OPTIONAL_TBODY) {
     A.DOM._ADD_HTML = A.DOM.addHTML;
 
     A.DOM.addHTML = function(node, content, where) {
-        var nodeName = (node.nodeName && node.nodeName.toLowerCase()) || STR_EMPTY;
+        var nodeName = (node.nodeName && node.nodeName.toLowerCase()) || '';
 
-        var tagName = STR_EMPTY;
+        var tagName = '';
 
         if (!isUndefined(content)) {
             if (isString(content)) {
@@ -1298,7 +1279,7 @@ if (!SUPPORT_OPTIONAL_TBODY) {
         if (nodeName === 'table' && tagName === 'tr') {
             node = node.getElementsByTagName('tbody')[0] || node.appendChild(node.ownerDocument.createElement('tbody'));
 
-            var whereNodeName = ((where && where.nodeName) || STR_EMPTY).toLowerCase();
+            var whereNodeName = ((where && where.nodeName) || '').toLowerCase();
 
             // Assuming if the "where" is a tbody node,
             // we're trying to prepend to a table. Attempt to
@@ -1426,8 +1407,6 @@ A.mix(
          * @method getDOM
          */
         getDOM: function() {
-            var instance = this;
-
             return ANodeList.getDOMNodes(this);
         },
 
@@ -1500,9 +1479,9 @@ NODELIST_PROTO.filter = function(value, context) {
 A.mix(
     ANodeList, {
         create: function(html) {
-            var docFrag = A.getDoc().invoke(CREATE_DOCUMENT_FRAGMENT);
+            var docFrag = A.getDoc().invoke('createDocumentFragment');
 
-            return docFrag.append(html).get(CHILD_NODES);
+            return docFrag.append(html).get('childNodes');
         }
     }
 );

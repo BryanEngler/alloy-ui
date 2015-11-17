@@ -1,7 +1,9 @@
 {
     "aui-video": {
         "requires": [
+            "node-event-html5",
             "querystring-stringify-simple",
+            "aui-aria",
             "aui-node",
             "aui-component",
             "aui-debounce"

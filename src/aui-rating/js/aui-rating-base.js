@@ -10,49 +10,14 @@ var Lang = A.Lang,
     isNumber = Lang.isNumber,
     isString = Lang.isString,
 
-    isNodeList = function(v) {
-        return (v instanceof A.NodeList);
-    },
-
-    isNode = function(v) {
-        return (v instanceof A.Node);
-    },
-
-    ANCHOR = 'a',
-    BOUNDING_BOX = 'boundingBox',
-    CAN_RESET = 'canReset',
-    CONTENT_BOX = 'contentBox',
-    DEFAULT_SELECTED = 'defaultSelected',
-    DISABLED = 'disabled',
-    DOT = '.',
-    ELEMENTS = 'elements',
     ENTER = 13,
-    HREF = 'href',
-    ID = 'id',
-    INPUT = 'input',
-    INPUT_NAME = 'inputName',
-    LABEL = 'label',
-    LABEL_NODE = 'labelNode',
-    NAME = 'name',
-    NODE_NAME = 'nodeName',
-    RATING = 'rating',
-    SELECTED_INDEX = 'selectedIndex',
-    SHOW_TITLE = 'showTitle',
-    SIZE = 'size',
-    STR_EMPTY = '',
-    TITLE = 'title',
-    VALUE = 'value',
-
-    EV_RATING_ITEM_CLICK = 'itemClick',
-    EV_RATING_ITEM_OUT = 'itemOut',
-    EV_RATING_ITEM_OVER = 'itemOver',
-    EV_RATING_ITEM_SELECT = 'itemSelect',
 
     getCN = A.getClassName,
 
-    CSS_STAR = getCN('icon', 'star'),
-    CSS_STAR_EMPTY = getCN('icon', 'star', 'empty'),
-    CSS_RATING_LABEL = getCN(RATING, LABEL),
+    CSS_ICON = getCN('glyphicon'),
+    CSS_STAR = getCN('glyphicon', 'star'),
+    CSS_STAR_EMPTY = getCN('glyphicon', 'star', 'empty'),
+    CSS_RATING_LABEL = getCN('rating', 'label'),
 
     TPL_ELEMENT = '<a class="{cssClasses}" tabindex="{tabindex}"></a>',
     TPL_LABEL = '<span class="' + CSS_RATING_LABEL + '"></span>';
@@ -66,6 +31,7 @@ var Lang = A.Lang,
  * Check the [live demo](http://alloyui.com/examples/rating/).
  *
  * @class A.Rating
+ * @extends A.Component
  * @param {Object} config Object literal specifying widget configuration
  *     properties.
  * @constructor
@@ -127,10 +93,10 @@ var Rating = A.Component.create({
          */
         cssClasses: {
             value: {
-                element: CSS_STAR_EMPTY,
-                hover: CSS_STAR,
-                off: CSS_STAR_EMPTY,
-                on: CSS_STAR
+                element: [CSS_ICON, CSS_STAR_EMPTY].join(' '),
+                hover: [CSS_ICON, CSS_STAR].join(' '),
+                off: [CSS_ICON, CSS_STAR_EMPTY].join(' '),
+                on: [CSS_ICON, CSS_STAR].join(' ')
             }
         },
 
@@ -158,7 +124,7 @@ var Rating = A.Component.create({
          * @type NodeList
          */
         elements: {
-            validator: isNodeList
+            validator: A.Lang.isNodeList
         },
 
         /**
@@ -169,7 +135,7 @@ var Rating = A.Component.create({
          * @type Node
          */
         hiddenInput: {
-            validator: isNode
+            validator: A.Lang.isNode
         },
 
         /**
@@ -181,7 +147,7 @@ var Rating = A.Component.create({
          * @type String
          */
         inputName: {
-            value: STR_EMPTY,
+            value: '',
             validator: isString
         },
 
@@ -193,7 +159,7 @@ var Rating = A.Component.create({
          * @type String
          */
         label: {
-            value: STR_EMPTY,
+            value: '',
             validator: isString
         },
 
@@ -210,7 +176,7 @@ var Rating = A.Component.create({
             valueFn: function() {
                 return A.Node.create(TPL_LABEL);
             },
-            validator: isNode
+            validator: A.Lang.isNode
         },
 
         /**
@@ -287,14 +253,14 @@ var Rating = A.Component.create({
         },
 
         label: function(srcNode) {
-            var labelNode = srcNode.one(DOT + CSS_RATING_LABEL);
+            var labelNode = srcNode.one('.' + CSS_RATING_LABEL);
 
             if (labelNode) {
                 return labelNode.html();
             }
         },
 
-        labelNode: DOT + CSS_RATING_LABEL
+        labelNode: '.' + CSS_RATING_LABEL
     },
 
     prototype: {
@@ -370,7 +336,7 @@ var Rating = A.Component.create({
             var instance = this,
                 cssClasses = instance.get('cssClasses');
 
-            instance.get(ELEMENTS).each(function(node) {
+            instance.get('elements').each(function(node) {
                 node.removeClass(cssClasses.on);
                 node.removeClass(cssClasses.hover);
                 node.addClass(cssClasses.element);
@@ -385,30 +351,30 @@ var Rating = A.Component.create({
          */
         select: function(index) {
             var instance = this,
-                oldIndex = instance.get(SELECTED_INDEX),
-                canReset = instance.get(CAN_RESET);
+                oldIndex = instance.get('selectedIndex'),
+                canReset = instance.get('canReset');
 
             // clear selection when the selected element is clicked
             if (canReset && (oldIndex === index)) {
                 index = -1;
             }
 
-            instance.set(SELECTED_INDEX, index);
+            instance.set('selectedIndex', index);
 
-            var selectedIndex = instance.get(SELECTED_INDEX),
+            var selectedIndex = instance.get('selectedIndex'),
                 data = instance._getInputData(selectedIndex),
-                title = (TITLE in data) ? data.title : STR_EMPTY,
-                value = (VALUE in data) ? data.value : selectedIndex;
+                title = ('title' in data) ? data.title : '',
+                value = ('value' in data) ? data.value : selectedIndex;
 
             instance.fillTo(selectedIndex);
 
-            instance.set(TITLE, title);
-            instance.set(VALUE, value);
+            instance.set('title', title);
+            instance.set('value', value);
 
             var hiddenInput = instance.get('hiddenInput');
 
-            hiddenInput.setAttribute(TITLE, title);
-            hiddenInput.setAttribute(VALUE, value);
+            hiddenInput.setAttribute('title', title);
+            hiddenInput.setAttribute('value', value);
         },
 
         /**
@@ -427,10 +393,10 @@ var Rating = A.Component.create({
             instance.clearSelection();
 
             if (index >= 0) {
-                instance.get(ELEMENTS).some(function(node, i) {
+                instance.get('elements').some(function(node, i) {
                     node.addClass(className || cssClasses.on);
                     node.removeClass(cssClasses.element);
-                    return (i === Math.floor(index));
+                    return (i === Math.round(index));
                 });
             }
         },
@@ -445,7 +411,7 @@ var Rating = A.Component.create({
         indexOf: function(elem) {
             var instance = this;
 
-            return instance.get(ELEMENTS).indexOf(elem);
+            return instance.get('elements').indexOf(elem);
         },
 
         /**
@@ -464,7 +430,7 @@ var Rating = A.Component.create({
             // checks if the widget is not disabled and if the dom event is
             // firing with a item as target do not fire custom events for other
             // elements into the boundingBox
-            return !instance.get(DISABLED) && domTarget.test('a');
+            return !instance.get('disabled') && domTarget.test('a');
         },
 
         /**
@@ -481,9 +447,9 @@ var Rating = A.Component.create({
                 cssClasses = instance.get('cssClasses'),
                 disabled,
                 elements = [],
-                size = this.get(SIZE);
+                size = this.get('size');
 
-            disabled = instance.get(DISABLED);
+            disabled = instance.get('disabled');
 
             for (var i = 0; i < size; i++) {
                 elements.push(
@@ -494,7 +460,7 @@ var Rating = A.Component.create({
                 );
             }
 
-            return A.NodeList.create(elements.join(STR_EMPTY));
+            return A.NodeList.create(elements.join(''));
         },
 
         /**
@@ -525,7 +491,7 @@ var Rating = A.Component.create({
              * @type {EventCustom}
              */
             publish(
-                EV_RATING_ITEM_CLICK,
+                'itemClick',
                 this._defRatingItemClickFn
             );
 
@@ -538,7 +504,7 @@ var Rating = A.Component.create({
              * @type {EventCustom}
              */
             publish(
-                EV_RATING_ITEM_SELECT,
+                'itemSelect',
                 this._defRatingItemSelectFn
             );
 
@@ -551,7 +517,7 @@ var Rating = A.Component.create({
              * @type {EventCustom}
              */
             publish(
-                EV_RATING_ITEM_OVER,
+                'itemOver',
                 this._defRatingItemOverFn
             );
 
@@ -564,7 +530,7 @@ var Rating = A.Component.create({
              * @type {EventCustom}
              */
             publish(
-                EV_RATING_ITEM_OUT,
+                'itemOut',
                 this._defRatingItemOutFn
             );
         },
@@ -580,7 +546,7 @@ var Rating = A.Component.create({
             var instance = this,
                 domEvent = event.domEvent;
 
-            instance.fire(EV_RATING_ITEM_SELECT, {
+            instance.fire('itemSelect', {
                 delegateEvent: event,
                 domEvent: domEvent,
                 ratingItem: domEvent.target
@@ -613,7 +579,7 @@ var Rating = A.Component.create({
         _defRatingItemOutFn: function() {
             var instance = this;
 
-            instance.fillTo(instance.get(SELECTED_INDEX));
+            instance.fillTo(instance.get('selectedIndex'));
         },
 
         /**
@@ -658,22 +624,22 @@ var Rating = A.Component.create({
          */
         _parseInputElements: function() {
             var instance = this,
-                boundingBox = instance.get(BOUNDING_BOX),
-                inputs = boundingBox.all(INPUT),
+                boundingBox = instance.get('boundingBox'),
+                inputs = boundingBox.all('input'),
                 size = inputs.size(),
-                inputName = instance.get(INPUT_NAME),
+                inputName = instance.get('inputName'),
                 hiddenInput = A.Node.create('<input type="hidden" />');
 
             if (size > 0) {
-                inputName = inputName || inputs.item(0).getAttribute(NAME);
+                inputName = inputName || inputs.item(0).getAttribute('name');
 
-                instance.set(SIZE, size);
+                instance.set('size', size);
 
                 var labels = boundingBox.getElementsByTagName('label');
 
                 inputs.each(function(node, index) {
-                    var id = node.get(ID);
-                    var label = STR_EMPTY;
+                    var id = node.get('id');
+                    var label = '';
 
                     if (id) {
                         // for a11y parse the <label> elments information
@@ -689,8 +655,8 @@ var Rating = A.Component.create({
 
                     instance.inputElementsData[index] = {
                         content: label,
-                        value: node.getAttribute(VALUE) || index,
-                        title: node.getAttribute(TITLE)
+                        value: node.getAttribute('value') || index,
+                        title: node.getAttribute('title')
                     };
                 });
 
@@ -699,7 +665,7 @@ var Rating = A.Component.create({
             }
 
             if (inputName) {
-                hiddenInput.setAttribute(NAME, inputName);
+                hiddenInput.setAttribute('name', inputName);
                 boundingBox.appendChild(hiddenInput);
             }
 
@@ -715,8 +681,8 @@ var Rating = A.Component.create({
         _renderLabel: function() {
             var instance = this;
 
-            instance.get(CONTENT_BOX).setContent(
-                instance.get(LABEL_NODE)
+            instance.get('contentBox').setContent(
+                instance.get('labelNode')
             );
         },
 
@@ -728,15 +694,15 @@ var Rating = A.Component.create({
          */
         _renderElements: function() {
             var instance = this,
-                contentBox = instance.get(CONTENT_BOX),
-                elements = instance.get(ELEMENTS);
+                contentBox = instance.get('contentBox'),
+                elements = instance.get('elements');
 
             // if there are no elements in the markup, create them based on the
             // size attribute
             if (!elements || !elements.size()) {
                 elements = instance._createElements();
 
-                instance.set(ELEMENTS, elements);
+                instance.set('elements', elements);
             }
 
             elements.each(
@@ -746,13 +712,13 @@ var Rating = A.Component.create({
                         // try to use the pulled title data from the dom,
                         // otherwise use the TITLE attr, in the last case use
                         // the content
-                        title = data.title || instance.get(TITLE) || content;
+                        title = data.title || instance.get('title') || content;
 
                     // setting the title
-                    if (title && instance.get(SHOW_TITLE)) {
-                        element.setAttribute(TITLE, title);
+                    if (title && instance.get('showTitle')) {
+                        element.setAttribute('title', title);
                     }
-                    if (!element.attr(HREF) && (element.get(NODE_NAME).toLowerCase() === ANCHOR)) {
+                    if (!element.attr('href') && (element.get('nodeName').toLowerCase() === 'a')) {
                         element.setAttribute('onclick', 'return false;');
                     }
                 }
@@ -768,9 +734,9 @@ var Rating = A.Component.create({
          */
         _syncElements: function() {
             var instance = this,
-                selectedIndex = instance.get(DEFAULT_SELECTED) - 1;
+                selectedIndex = instance.get('defaultSelected') - 1;
 
-            instance.set(SELECTED_INDEX, selectedIndex);
+            instance.set('selectedIndex', selectedIndex);
             instance.select();
         },
 
@@ -782,9 +748,9 @@ var Rating = A.Component.create({
          */
         _syncLabelUI: function() {
             var instance = this,
-                labelText = instance.get(LABEL);
+                labelText = instance.get('label');
 
-            instance.get(LABEL_NODE).html(labelText);
+            instance.get('labelNode').html(labelText);
         },
 
         /**
@@ -811,7 +777,7 @@ var Rating = A.Component.create({
                 domEvent = event.domEvent;
 
             if (instance._canFireCustomEvent(event)) {
-                instance.fire(EV_RATING_ITEM_CLICK, {
+                instance.fire('itemClick', {
                     delegateEvent: event,
                     domEvent: domEvent
                 });
@@ -832,7 +798,7 @@ var Rating = A.Component.create({
             var instance = this;
 
             if (instance._canFireCustomEvent(event)) {
-                instance.fire(EV_RATING_ITEM_OUT, {
+                instance.fire('itemOut', {
                     delegateEvent: event,
                     domEvent: event.domEvent
                 });
@@ -850,7 +816,7 @@ var Rating = A.Component.create({
             var instance = this;
 
             if (instance._canFireCustomEvent(event)) {
-                instance.fire(EV_RATING_ITEM_OVER, {
+                instance.fire('itemOver', {
                     delegateEvent: event,
                     domEvent: event.domEvent
                 });

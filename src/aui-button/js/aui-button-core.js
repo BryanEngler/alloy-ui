@@ -4,45 +4,15 @@
  * @module aui-button
  */
 
-var Lang = A.Lang,
-    isArray = Lang.isArray,
-    isNumber = Lang.isNumber,
-    isString = Lang.isString,
-    isUndefined = Lang.isUndefined,
-
-    ACTIVE = 'active',
-    BOUNDING_BOX = 'boundingBox',
-    BTN = 'btn',
-    BTNGROUP = 'btngroup',
-    BUTTON = 'button',
-    CLASS_NAME = 'className',
-    DISABLED = 'disabled',
-    GROUP = 'group',
-    I = 'i',
-    ICON = 'icon',
-    ICON_ALIGN = 'iconAlign',
-    ICON_ELEMENT = 'iconElement',
-    LABEL = 'label',
-    LEFT = 'left',
-    PRIMARY = 'primary',
-    RIGHT = 'right',
-    SUBMIT = 'submit',
-    SYNC_UI = 'syncUI',
-    TOGGLEBTN = 'togglebtn',
-    CHECKBOX = 'checkbox',
-    TYPE = 'type',
-    WIDGET_CONSTRUCTOR = 'widgetConstructor',
-
-    getClassName = A.getClassName,
-
-    CLASS_NAMES = {
-        BUTTON: getClassName(BTN),
-        BUTTON_GROUP: getClassName(BTN, GROUP),
-        DISABLED: getClassName(DISABLED),
-        LABEL: getClassName(LABEL),
-        PRIMARY: getClassName(BTN, PRIMARY),
-        SELECTED: getClassName(ACTIVE),
-        TOGGLE: getClassName(TOGGLEBTN)
+var CLASS_NAMES = {
+        BUTTON: A.getClassName('btn'),
+        BUTTON_DEFAULT: A.getClassName('btn', 'default'),
+        BUTTON_GROUP: A.getClassName('btn', 'group'),
+        DISABLED: A.getClassName('disabled'),
+        LABEL: A.getClassName('label'),
+        PRIMARY: A.getClassName('btn', 'primary'),
+        SELECTED: A.getClassName('active'),
+        TOGGLE: A.getClassName('togglebtn')
     };
 
 /**
@@ -54,9 +24,9 @@ var Lang = A.Lang,
  * @constructor
  */
 var ButtonExt = function(config) {
-    var instance = this;
-
-    instance._setEarlyButtonDomType(config.domType);
+    if (config && config.domType && this._domTypeValidator(config.domType)) {
+        this._setEarlyButtonDomType(config.domType);
+    }
 };
 
 /**
@@ -69,6 +39,30 @@ var ButtonExt = function(config) {
 ButtonExt.ATTRS = {
 
     /**
+     * CSS class to be automatically added to the `boundingBox`.
+     *
+     * @attribute cssClass
+     * @type {String}
+     */
+    cssClass: {
+        validator: A.Lang.isString,
+        value: ''
+    },
+
+    /**
+     * Defines if the button will discard the default button classes.
+     *
+     * @attribute discardDefaultButtonCssClasses
+     * @default false
+     * @type {Boolean}
+     */
+    discardDefaultButtonCssClasses: {
+        validator: A.Lang.isBoolean,
+        value: false,
+        writeOnce: true
+    },
+
+    /**
      * Defines the HTML type attribute of element e.g. `<input type="button">`.
      *
      * @attribute domType
@@ -76,10 +70,8 @@ ButtonExt.ATTRS = {
      * @writeOnce
      */
     domType: {
-        writeOnce: true,
-        validator: function(val) {
-            return val.toLowerCase() === BUTTON || val.toLowerCase() === SUBMIT;
-        }
+        validator: '_domTypeValidator',
+        writeOnce: true
     },
 
     /**
@@ -93,15 +85,14 @@ ButtonExt.ATTRS = {
 
     /**
      * Defines markup template for icon, passed in as a node e.g.
-     * `Y.Node.create('<i></i>')`.
+     * `Y.Node.create('<span></span>')`.
      *
      * @attribute iconElement
-     * @default 'A.Node.create("<i></i>")'
+     * @default 'A.Node.create("<span></span>")'
      */
     iconElement: {
         valueFn: function() {
-            var instance = this;
-            return A.Node.create(instance.ICON_TEMPLATE);
+            return A.Node.create(this.ICON_TEMPLATE);
         }
     },
 
@@ -113,19 +104,8 @@ ButtonExt.ATTRS = {
      * @type {String}
      */
     iconAlign: {
-        value: LEFT,
-        validator: isString
-    },
-
-    /**
-     * Sets button style to primary.
-     *
-     * @attribute primary
-     * @default false
-     * @type {Boolean}
-     */
-    primary: {
-        value: false
+        validator: A.Lang.isString,
+        value: 'left'
     }
 };
 
@@ -138,7 +118,7 @@ ButtonExt.ATTRS = {
  * @static
  */
 ButtonExt.HTML_PARSER = {
-    iconElement: I
+    iconElement: 'span'
 };
 
 /**
@@ -153,15 +133,14 @@ ButtonExt.HTML_PARSER = {
  * @static
  */
 ButtonExt.getTypedButtonTemplate = function(template, type) {
-    return Lang.sub(template, {
-        type: type ? ' type="' + type + '"' : ''
+    return A.Lang.sub(template, {
+        type: ' type="' + type + '"'
     });
 };
 
 ButtonExt.prototype = {
+    ICON_TEMPLATE: '<span></span>',
     TEMPLATE: '<button{type}></button>',
-    ICON_TEMPLATE: '<i></i>',
-    iconElement: null,
 
     /**
      * Construction logic executed during `ButtonExt` instantiation. Lifecycle.
@@ -170,39 +149,38 @@ ButtonExt.prototype = {
      * @protected
      */
     initializer: function() {
-        var instance = this;
-
-        instance.after(instance.syncButtonExtUI, instance, SYNC_UI);
-        instance.after({
-            iconChange: instance._afterIconChange,
-            iconAlignChange: instance._afterIconAlignChange,
-            primaryChange: instance._afterPrimaryChange
+        this.before(this.renderButtonExtUI, this, 'renderUI');
+        this.after(this.syncButtonExtUI, this, 'syncUI');
+        this.after({
+            iconChange: this._afterIconChange,
+            iconAlignChange: this._afterIconAlignChange
         });
     },
 
     /**
-     * Updates icon image, icon alignment, and primary button style.
+     * Includes default button classes if necessary.
+     * Fires after `renderUI` method. 
+     *
+     * @method renderButtonExtUI
+     * @protected
+     */
+    renderButtonExtUI: function() {
+        var cssClass = this.get('cssClass');
+
+        if (!this.get('discardDefaultButtonCssClasses')) {
+            cssClass = [cssClass, CLASS_NAMES.BUTTON_DEFAULT, CLASS_NAMES.BUTTON].join(' ');
+            this.set('cssClass', cssClass);
+        }
+    },
+
+    /**
+     * Updates icon CSS class.
      *
      * @method syncButtonExtUI
      */
     syncButtonExtUI: function() {
-        var instance = this;
-
-        instance._uiSetIcon(instance.get(ICON));
-        instance._uiSetPrimary(instance.get(PRIMARY));
-    },
-
-    /**
-     * Fires after `icon` attribute change.
-     *
-     * @method _afterIconChange
-     * @param {EventFacade} event
-     * @protected
-     */
-    _afterIconChange: function(event) {
-        var instance = this;
-
-        instance._uiSetIcon(event.newVal);
+        this._uiSetIcon(this.get('icon'));
+        this._setButtonRole();
     },
 
     /**
@@ -213,22 +191,39 @@ ButtonExt.prototype = {
      * @protected
      */
     _afterIconAlignChange: function(event) {
-        var instance = this;
-
-        instance._uiSetIconAlign(event.newVal);
+        this._uiSetIconAlign(event.newVal);
     },
 
     /**
-     * Fires after `primary` attribute change.
+     * Fires after `icon` attribute change.
      *
-     * @method _afterPrimaryChange
+     * @method _afterIconChange
      * @param {EventFacade} event
      * @protected
      */
-    _afterPrimaryChange: function(event) {
-        var instance = this;
+    _afterIconChange: function(event) {
+        this._uiSetIcon(event.newVal);
+    },
 
-        instance._uiSetPrimary(event.newVal);
+    /**
+     * Checks if the domType attribute has a valid value.
+     *
+     * @method _domTypeValidator
+     * @param {String} type
+     * @protected
+     */
+    _domTypeValidator: function(type) {
+        return type.toLowerCase() === 'button' || type.toLowerCase() === 'submit';
+    },
+
+    /**
+     * Sets the role attribute on the bounding box to 'button';
+     *
+     * @method setButtonRole
+     * @protected
+     */
+    _setButtonRole: function() {
+        this.get('boundingBox').setAttribute('role', 'button');
     },
 
     /**
@@ -240,23 +235,8 @@ ButtonExt.prototype = {
      * @protected
      */
     _setEarlyButtonDomType: function(type) {
-        var instance = this;
-
-        instance.BOUNDING_TEMPLATE = A.ButtonExt.getTypedButtonTemplate(
+        this.BOUNDING_TEMPLATE = A.ButtonExt.getTypedButtonTemplate(
             ButtonExt.prototype.TEMPLATE, type);
-    },
-
-    /**
-     * Adds primary button class.
-     *
-     * @method _uiSetPrimary
-     * @param {String} val
-     * @protected
-     */
-    _uiSetPrimary: function(val) {
-        var instance = this;
-
-        instance.get(BOUNDING_BOX).toggleClass(CLASS_NAMES.PRIMARY, val);
     },
 
     /**
@@ -267,14 +247,10 @@ ButtonExt.prototype = {
      * @protected
      */
     _uiSetIcon: function(val) {
-        var instance = this;
-
-        if (!val) {
-            return;
-        }
-        var iconElement = instance.get(ICON_ELEMENT);
-        iconElement.set(CLASS_NAME, val);
-        instance._uiSetIconAlign(instance.get(ICON_ALIGN));
+        if (val) {
+           this.get('iconElement').set('className', val);
+           this._uiSetIconAlign(this.get('iconAlign'));
+       }
     },
 
     /**
@@ -285,10 +261,16 @@ ButtonExt.prototype = {
      * @protected
      */
     _uiSetIconAlign: function(val) {
-        var instance = this;
+        // Y.Button labelHTML feature assumes any HTML inside the button is the
+        // label and the icon HTML is contained on its value. To workaround this
+        // issue on icon alignment fetchs the reference from DOM, if not
+        // available uses the one created by HTML_PARSER
+        var iconElement = this.getNode().one(A.ButtonExt.HTML_PARSER.iconElement);
+        if (!iconElement) {
+            iconElement = this.get('iconElement');
+        }
 
-        A.Button.syncIconUI(
-            instance.get(BOUNDING_BOX), instance.get(ICON_ELEMENT), val);
+        A.Button.syncIconUI(this.get('boundingBox'), iconElement, val);
     }
 };
 
@@ -300,7 +282,6 @@ A.ButtonExt = ButtonExt;
  * @class A.ButtonCore
  * @constructor
  */
-var ButtonCore = A.ButtonCore;
 
 /**
  * Contains CSS class names to use for `ButtonCore`.
@@ -308,30 +289,13 @@ var ButtonCore = A.ButtonCore;
  * @property CLASS_NAMES
  * @static
  */
-ButtonCore.CLASS_NAMES = CLASS_NAMES;
-
-/**
- * Sets the button text (either as text or sets the `value` attribute).
- *
- * @method _uiSetLabel
- * @protected
- */
-ButtonCore.prototype._uiSetLabel = (function(original) {
-    return function(label) {
-        var instance = this,
-            node = instance.getNode();
-
-        if (label !== '' || node.one('.' + ButtonCore.CLASS_NAMES.LABEL)) {
-            return original.apply(instance, arguments);
-        }
-    };
-}(ButtonCore.prototype._uiSetLabel));
+A.ButtonCore.CLASS_NAMES = CLASS_NAMES;
 
 var Button = A.Button;
 
-Button.NAME = BTN;
+Button.NAME = 'aui-button';
 
-Button.CSS_PREFIX = CLASS_NAMES.BUTTON;
+Button.CSS_PREFIX = 'aui-button';
 
 Button.CLASS_NAMES = CLASS_NAMES;
 
@@ -348,15 +312,6 @@ Button.CLASS_NAMES = CLASS_NAMES;
 A.Button = A.Base.create(Button.NAME, Button, [ButtonExt, A.WidgetCssClass, A.WidgetToggle], {}, {
 
     /**
-     * Static property provides a string to identify the CSS prefix.
-     *
-     * @property CSS_PREFIX
-     * @type {String}
-     * @static
-     */
-    CSS_PREFIX: CLASS_NAMES.BUTTON,
-
-    /**
      * Returns an object literal containing widget constructor data specified in
      * the node.
      *
@@ -365,7 +320,7 @@ A.Button = A.Base.create(Button.NAME, Button, [ButtonExt, A.WidgetCssClass, A.Wi
      * @return {Object} The configuration object for the widget.
      */
     getWidgetLazyConstructorFromNodeData: function(node) {
-        var config = node.getData(WIDGET_CONSTRUCTOR) || {};
+        var config = node.getData('widgetConstructor') || {};
 
         config.boundingBox = node;
         config.render = true;
@@ -380,7 +335,7 @@ A.Button = A.Base.create(Button.NAME, Button, [ButtonExt, A.WidgetCssClass, A.Wi
      * @return {Boolean} Whether the node has a cached widget constructor data.
      */
     hasWidgetLazyConstructorData: function(node) {
-        return node.getData(WIDGET_CONSTRUCTOR) !== undefined;
+        return node.getData('widgetConstructor') !== undefined;
     },
 
     /**
@@ -391,7 +346,7 @@ A.Button = A.Base.create(Button.NAME, Button, [ButtonExt, A.WidgetCssClass, A.Wi
      * @param {Object} config
      */
     setWidgetLazyConstructorNodeData: function(node, config) {
-        node.setData(WIDGET_CONSTRUCTOR, config);
+        node.setData('widgetConstructor', config);
     },
 
     /**
@@ -403,10 +358,10 @@ A.Button = A.Base.create(Button.NAME, Button, [ButtonExt, A.WidgetCssClass, A.Wi
      * @param {String} iconAlign The align position, e.g right or left.
      */
     syncIconUI: function(buttonElement, iconElement, iconAlign) {
-        var textNode = A.config.doc.createTextNode(' '),
-            insertPos = 0;
+        var insertPos = 0,
+            textNode = A.config.doc.createTextNode(' ');
 
-        if (iconAlign === RIGHT) {
+        if (iconAlign === 'right') {
             insertPos = null;
         }
 
@@ -417,7 +372,7 @@ A.Button = A.Base.create(Button.NAME, Button, [ButtonExt, A.WidgetCssClass, A.Wi
 
 var ToggleButton = A.ToggleButton;
 
-ToggleButton.NAME = TOGGLEBTN;
+ToggleButton.NAME = 'togglebtn';
 
 ToggleButton.CSS_PREFIX = CLASS_NAMES.TOGGLE;
 
@@ -436,7 +391,7 @@ A.ToggleButton = A.Base.create(ToggleButton.NAME, ToggleButton, [ButtonExt, A.Wi
 
 var ButtonGroup = A.ButtonGroup;
 
-ButtonGroup.NAME = BTNGROUP;
+ButtonGroup.NAME = 'btngroup';
 
 ButtonGroup.CSS_PREFIX = CLASS_NAMES.BUTTON_GROUP;
 
@@ -455,22 +410,13 @@ A.mix(ButtonGroup.prototype, {
     CONTENT_TEMPLATE: null,
 
     /**
-     * Returns the `item` or `node` of specified `index`.
+     * Constructor for `A.ButtonGroup`. Lifecycle.
      *
-     * @method item
-     * @param {Number} index
-     * @return {Button | Node} The item as `Button` or `Node` instance.
+     * @method initializer
+     * @protected
      */
-    item: function(index) {
-        var instance = this,
-            node = instance.getButtons().item(index),
-            item = A.Widget.getByNode(node);
-
-        if (A.instanceOf(item, Button)) {
-            return item;
-        }
-
-        return node;
+    initializer: function() {
+        this.after('selectionChange', this._afterSelectionChange);
     },
 
     /**
@@ -480,10 +426,16 @@ A.mix(ButtonGroup.prototype, {
      * @protected
      */
     renderUI: function() {
-        var instance = this;
+        var boundingBox = this.get('boundingBox'),
+            type = this.get('type');
 
-        instance.getButtons().each(function(button) {
+        this.getButtons().each(function(button) {
             if (!button.button && !A.instanceOf(A.Widget.getByNode(button), A.Button)) {
+                // TODO: This shouldn't assume button is always default.
+                // A.Plugin.Button doesn't current allow augmentation, therefore
+                // it can't add A.ButtonExt extra attributes to it.
+                button.addClass(A.ButtonCore.CLASS_NAMES.BUTTON_DEFAULT);
+                button.setAttribute('role', 'option');
 
                 if (A.Button.hasWidgetLazyConstructorData(button)) {
                     new A.Button(A.Button.getWidgetLazyConstructorFromNodeData(button));
@@ -494,6 +446,34 @@ A.mix(ButtonGroup.prototype, {
                 }
             }
         });
+
+        boundingBox.setAttrs({
+            'aria-multiselectable': (type === 'checkbox') ? true : false,
+            role: 'listbox'
+        });
+
+        this.syncAriaSelected(this.getButtons());
+    },
+
+    /**
+     * Returns the `item` or `node` of specified `index`.
+     *
+     * @method item
+     * @param {Number} index
+     * @return {Button | Node} The item as `Button` or `Node` instance.
+     */
+    item: function(index) {
+        var item,
+            node;
+
+        node = this.getButtons().item(index);
+        item = A.Widget.getByNode(node);
+
+        if (A.instanceOf(item, Button)) {
+            return item;
+        }
+
+        return node;
     },
 
     /**
@@ -503,9 +483,23 @@ A.mix(ButtonGroup.prototype, {
      * @param {Array} items
      */
     select: function(items) {
-        var instance = this;
+        return this.toggleSelect(items, true);
+    },
 
-        return instance.toggleSelect(items, true);
+    /**
+     * Updates the 'aria-selected' attribute on all buttons.
+     *
+     * @method syncAriaSelected
+     * @param {Array} buttons
+     */
+    syncAriaSelected: function(buttons) {
+        var selected;
+
+        buttons.each(function(button) {
+            selected = button.hasClass(A.ButtonGroup.CLASS_NAMES.SELECTED);
+
+            button.setAttribute('aria-selected', selected);
+        });
     },
 
     /**
@@ -516,25 +510,25 @@ A.mix(ButtonGroup.prototype, {
      * @param {Boolean} forceSelection Whether selection should be forced.
      */
     toggleSelect: function(items, forceSelection) {
-        var instance = this,
-            type = instance.get(TYPE),
-            buttons = instance.getButtons();
+        var buttons = this.getButtons(),
+            instance = this,
+            type = this.get('type');
 
-        if (isUndefined(items)) {
+        if (A.Lang.isUndefined(items)) {
             items = buttons.getDOMNodes();
         }
-        if (!isArray(items)) {
+        if (!A.Lang.isArray(items)) {
             items = A.Array(items);
         }
 
         A.Array.each(items, function(item) {
-            if (isNumber(item)) {
+            if (A.Lang.isNumber(item)) {
                 item = buttons.item(item);
             }
             // Make sure the passed dom nodes are instance of Node
             item = A.one(item);
 
-            if (type === CHECKBOX) {
+            if (type === 'checkbox') {
                 // If item is already selected...
                 if (item.hasClass(A.ButtonGroup.CLASS_NAMES.SELECTED)) {
                     if (forceSelection === true) {
@@ -562,8 +556,16 @@ A.mix(ButtonGroup.prototype, {
      * @param {Array} items
      */
     unselect: function(items) {
-        var instance = this;
+        return this.toggleSelect(items, false);
+    },
 
-        return instance.toggleSelect(items, false);
+    /**
+     * Fires after 'selectionChange' event.
+     *
+     * @method _afterSelectionChange
+     * @protected
+     */
+    _afterSelectionChange: function() {
+        this.syncAriaSelected(this.getButtons());
     }
 }, true);

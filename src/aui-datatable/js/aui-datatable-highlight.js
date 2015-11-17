@@ -10,36 +10,12 @@ var Lang = A.Lang,
     isString = Lang.isString,
     isBoolean = Lang.isBoolean,
 
-    ACTIVE = 'active',
-    ACTIVE_BORDER_WIDTH = 'activeBorderWidth',
-    ACTIVE_CELL = 'activeCell',
-    ACTIVE_COORD_CHANGE = 'activeCoordChange',
-    ACTIVE_ROW = 'activeRow',
-    BORDER = 'border',
-    CELLS = 'cells',
-    CHILDREN = 'children',
-    DATA_CHANGE = 'dataChange',
-    HIGHLIGHT = 'highlight',
-    HIGHLIGHT_RANGE = 'highlightRange',
-    HOST = 'host',
-    OVERLAY = 'overlay',
-    OVERLAY_ACTIVE_NODE = 'overlayActiveNode',
-    OVERLAY_NODE = 'overlayNode',
-    RANGE_BORDER_WIDTH = 'rangeBorderWidth',
-    REGION = 'region',
-    ROWS = 'rows',
-    SELECTION_CHANGE = 'selectionChange',
-    TYPE = 'type',
-
-    _SPACE = ' ',
-
     _setCSSClockwiseRule = function(val) {
-        var instance = this,
-            i = 0,
+        var i = 0,
             len;
 
         if (isString(val)) {
-            val = Lang.trim(val).replace(/\s+/g, ' ').split(_SPACE);
+            val = Lang.trim(val).replace(/\s+/g, ' ').split(' ');
         }
         else if (!isArray(val)) {
             val = A.Array(val);
@@ -58,7 +34,7 @@ var Lang = A.Lang,
  * @class A.DataTableHighlight
  * @extends Plugin.Base
  * @param {Object} config Object literal specifying widget configuration
- *     properties.
+ * properties.
  * @constructor
  */
 var DataTableHighlight = A.Base.create(
@@ -66,7 +42,9 @@ var DataTableHighlight = A.Base.create(
     A.Plugin.Base, [], {
         CLASS_NAMES: null,
 
-        TPL_FRAME: '<div class="{overlay}">' + '<div class="{border}"></div>' + '<div class="{border}"></div>' + '<div class="{border}"></div>' + '<div class="{border}"></div>' + '</div>',
+        TPL_FRAME: '<div class="{overlay}">' + '<div class="{border}"></div>' +
+            '<div class="{border}"></div>' + '<div class="{border}"></div>' +
+            '<div class="{border}"></div>' + '</div>',
 
         _lastActiveRow: null,
         _nodes: null,
@@ -80,30 +58,33 @@ var DataTableHighlight = A.Base.create(
          */
         initializer: function() {
             var instance = this,
-                host = instance.get(HOST);
+                host = instance.get('host');
 
             instance.CLASS_NAMES = {
-                active: host.getClassName(ACTIVE),
-                border: host.getClassName(HIGHLIGHT, BORDER),
-                highlight: host.getClassName(HIGHLIGHT),
-                overlay: host.getClassName(HIGHLIGHT, OVERLAY),
-                overlayActive: host.getClassName(HIGHLIGHT, OVERLAY, ACTIVE)
+                active: host.getClassName('active'),
+                border: host.getClassName('highlight', 'border'),
+                highlight: host.getClassName('highlight'),
+                overlay: host.getClassName('highlight', 'overlay'),
+                overlayActive: host.getClassName('highlight', 'overlay', 'active')
             };
 
-            instance.afterHostEvent(ACTIVE_COORD_CHANGE, instance._afterActiveCoordChange);
-            instance.afterHostEvent(SELECTION_CHANGE, instance._afterSelectionChange);
-            instance.afterHostEvent(DATA_CHANGE, instance._afterDataChange);
+            instance.afterHostEvent('activeCoordChange', instance._afterActiveCoordChange);
+            instance.afterHostEvent('blur', instance._afterBlur);
+            instance.afterHostEvent('dataChange', instance._afterDataChange);
+            instance.afterHostEvent('selectionChange', instance._afterSelectionChange);
+
+            A.on('windowresize', A.bind(instance._afterWindowResize, instance));
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Removes visual highlights from the active cell.
          *
          * @method clear
          */
         clear: function() {
             var instance = this,
-                host = instance.get(HOST),
-                activeCell = host.get(ACTIVE_CELL);
+                host = instance.get('host'),
+                activeCell = host.get('activeCell');
 
             if (activeCell) {
                 activeCell.removeClass(instance.CLASS_NAMES.active);
@@ -114,41 +95,43 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Gets the active node's region.
          *
          * @method getActiveRegion
+         * @return {Object} Active node's region.
          */
         getActiveRegion: function() {
             var instance = this,
-                host = instance.get(HOST),
-                type = instance.get(TYPE),
+                host = instance.get('host'),
+                type = instance.get('type'),
                 region = null,
                 activeNode;
 
-            if (type === ROWS) {
-                activeNode = host.get(ACTIVE_ROW);
+            if (type === 'rows') {
+                activeNode = host.get('activeRow');
             }
             else {
-                activeNode = host.get(ACTIVE_CELL);
+                activeNode = host.get('activeCell');
             }
 
             if (activeNode) {
-                region = activeNode.get(REGION);
+                region = activeNode.get('region');
             }
 
             return region;
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Gets the selection region.
          *
          * @method getSelectionRegion
+         * @return {Object} Selection region.
          */
         getSelectionRegion: function() {
             var instance = this,
                 nodes = instance._nodes,
-                r1 = nodes[0].get(REGION),
-                r2 = nodes[nodes.length - 1].get(REGION);
+                r1 = nodes[0].get('region'),
+                r2 = nodes[nodes.length - 1].get('region');
 
             return {
                 0: r1.top,
@@ -163,22 +146,23 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Fires after the `activeCoordChange` event. Changes the highlight to
+         * a the selected table cell.
          *
          * @method _afterActiveCoordChange
-         * @param event
+         * @param {EventFacade} event
          * @protected
          */
-        _afterActiveCoordChange: function(event) {
+        _afterActiveCoordChange: function() {
             var instance = this,
-                host = instance.get(HOST),
-                activeBorderWidth = instance.get(ACTIVE_BORDER_WIDTH),
-                overlayActiveNode = instance.get(OVERLAY_ACTIVE_NODE),
+                host = instance.get('host'),
+                activeBorderWidth = instance.get('activeBorderWidth'),
+                overlayActiveNode = instance.get('overlayActiveNode'),
                 classNames = instance.CLASS_NAMES,
-                activeRow = host.get(ACTIVE_ROW),
+                activeRow = host.get('activeRow'),
                 lastActiveRow = instance._lastActiveRow;
 
-            if (!instance.get(TYPE)) {
+            if (!instance.get('type')) {
                 return;
             }
 
@@ -200,33 +184,42 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Fires after `blur` event. Clear highlight.
          *
-         * @method _afterDataChange
-         * @param event
+         * @method _afterBlur
+         * @param {EventFacade} event
          * @protected
          */
-        _afterDataChange: function(event) {
-            var instance = this;
-
-            instance.clear();
+        _afterBlur: function() {
+            this.clear();
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Fires after `dataChange` event.
+         *
+         * @method _afterDataChange
+         * @param {EventFacade} event
+         * @protected
+         */
+        _afterDataChange: function() {
+            this._afterBlur();
+        },
+
+        /**
+         * Fires after `selectionChange`.
          *
          * @method _afterSelectionChange
-         * @param event
+         * @param {EventFacade} event
          * @protected
          */
         _afterSelectionChange: function(event) {
             var instance = this,
                 nodes,
-                highlightRange = instance.get(HIGHLIGHT_RANGE),
-                overlayNode = instance.get(OVERLAY_NODE),
-                rangeBorderWidth = instance.get(RANGE_BORDER_WIDTH);
+                highlightRange = instance.get('highlightRange'),
+                overlayNode = instance.get('overlayNode'),
+                rangeBorderWidth = instance.get('rangeBorderWidth');
 
-            if (!instance.get(TYPE)) {
+            if (!instance.get('type')) {
                 return;
             }
 
@@ -245,7 +238,31 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Fires after `windowresize`.
+         *
+         * @method _afterWindowResize
+         * @protected
+         */
+        _afterWindowResize: function() {
+            var instance = this,
+                activeBorderWidth = instance.get('activeBorderWidth'),
+                overlayActiveNode = instance.get('overlayActiveNode'),
+                overlayNode = instance.get('overlayNode'),
+                rangeBorderWidth = instance.get('rangeBorderWidth');
+
+            if (overlayActiveNode.inDoc()) {
+                instance._alignBorder(
+                    overlayActiveNode, instance.getActiveRegion(), activeBorderWidth);
+            }
+
+            if (overlayNode.inDoc()) {
+                instance._alignBorder(
+                    overlayNode, instance.getSelectionRegion(), rangeBorderWidth);
+            }
+        },
+
+        /**
+         * Align border.
          *
          * @method _alignBorder
          * @param overlayNode
@@ -255,12 +272,12 @@ var DataTableHighlight = A.Base.create(
          */
         _alignBorder: function(overlayNode, region, borderWidth) {
             var instance = this,
-                host = instance.get(HOST);
+                host = instance.get('host');
 
-            host._tableNode.appendChild(overlayNode);
+            host._tableNode.ancestor().appendChild(overlayNode);
 
             if (region) {
-                var borders = overlayNode.get(CHILDREN),
+                var borders = overlayNode.get('children'),
                     t = borders.item(0),
                     r = borders.item(1),
                     b = borders.item(2),
@@ -281,15 +298,16 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Collect nodes.
          *
          * @method _collectNodes
          * @param selection
          * @protected
+         * @return {null|Boolean}
          */
         _collectNodes: function(selection) {
             var instance = this,
-                type = instance.get(TYPE);
+                type = instance.get('type');
 
             if (!type || !selection) {
                 return null;
@@ -299,7 +317,7 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Clear borders.
          *
          * @method _clearBorders
          * @protected
@@ -307,12 +325,12 @@ var DataTableHighlight = A.Base.create(
         _clearBorders: function() {
             var instance = this;
 
-            instance.get(OVERLAY_NODE).remove();
-            instance.get(OVERLAY_ACTIVE_NODE).remove();
+            instance.get('overlayNode').remove();
+            instance.get('overlayActiveNode').remove();
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Clear highlights.
          *
          * @method _clearHighlights
          * @protected
@@ -328,24 +346,25 @@ var DataTableHighlight = A.Base.create(
         },
 
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Type validator.
          *
          * @method _validateType
-         * @param val
+         * @param {String} val
          * @protected
+         * @return {Boolean}
          */
         _validateType: function(val) {
-            return (val === CELLS || val === ROWS || val === null);
+            return (val === 'cells' || val === 'rows' || val === null);
         }
     }, {
         /**
-         * TODO. Wanna help? Please send a Pull Request.
+         * Static property provides a string to identify the namespace.
          *
          * @property NS
          * @type String
          * @static
          */
-        NS: HIGHLIGHT,
+        NS: 'highlight',
 
         /**
          * Static property provides a string to identify the class.
@@ -358,7 +377,7 @@ var DataTableHighlight = A.Base.create(
 
         /**
          * Static property used to define the default attribute
-         * configuration for the DataTableHighlight.
+         * configuration for the `A.DataTableHighlight`.
          *
          * @property ATTRS
          * @type Object
@@ -367,7 +386,7 @@ var DataTableHighlight = A.Base.create(
         ATTRS: {
 
             /**
-             * TODO. Wanna help? Please send a Pull Request.
+             * Defines the border width of the active node.
              *
              * @attribute activeBorderWidth
              * @default 2
@@ -379,7 +398,7 @@ var DataTableHighlight = A.Base.create(
             },
 
             /**
-             * TODO. Wanna help? Please send a Pull Request.
+             * Defines the `Node` used to overlay the active node.
              *
              * @attribute overlayActiveNode
              * @default null
@@ -401,7 +420,7 @@ var DataTableHighlight = A.Base.create(
             },
 
             /**
-             * TODO. Wanna help? Please send a Pull Request.
+             * Defines the `Node` used to overlay the node.
              *
              * @attribute overlayNode
              * @default null
@@ -420,7 +439,7 @@ var DataTableHighlight = A.Base.create(
             },
 
             /**
-             * TODO. Wanna help? Please send a Pull Request.
+             * Determines if a range of elements are highlighted.
              *
              * @attribute highlightRange
              * @default true
@@ -432,7 +451,7 @@ var DataTableHighlight = A.Base.create(
             },
 
             /**
-             * TODO. Wanna help? Please send a Pull Request.
+             * Defines the border width of the range selection.
              *
              * @attribute rangeBorderWidth
              * @default 1
@@ -444,13 +463,13 @@ var DataTableHighlight = A.Base.create(
             },
 
             /**
-             * TODO. Wanna help? Please send a Pull Request.
+             * Defines the type of highlight (cells or rows).
              *
              * @attribute type
              */
             type: {
                 validator: '_validateType',
-                value: CELLS
+                value: 'cells'
             }
         }
     }

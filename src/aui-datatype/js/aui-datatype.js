@@ -5,8 +5,6 @@
  */
 
 var L = A.Lang,
-    FALSE = 'false',
-    TRUE = 'true',
 
     NUM_SIXTY = 60,
     NUM_THOUSAND = 1000,
@@ -43,7 +41,7 @@ var L = A.Lang,
 DB.parse = function(data) {
     data = A.Lang.trim(data);
 
-    return (data == FALSE) ? false : !! data;
+    return (data === 'false') ? false : !!data;
 };
 
 /**
@@ -60,7 +58,7 @@ DS.evaluate = function(data) {
     var trimmedData = A.Lang.trim(data);
 
     // booleans
-    if (trimmedData == TRUE || trimmedData == FALSE) {
+    if (trimmedData === 'true' || trimmedData === 'false') {
         return DB.parse(data);
     }
 
@@ -89,11 +87,7 @@ var L = A.Lang,
     S = A.Lang.String,
 
     isDate = L.isDate,
-    isValue = L.isValue,
-
-    COLON = ':',
-    AM = 'am',
-    PM = 'pm';
+    isValue = L.isValue;
 
 A.namespace('DataType.DateMath');
 
@@ -349,7 +343,7 @@ A.mix(A.DataType.DateMath, {
      * @return {boolean}
      */
     compare: function(d1, d2) {
-        return (d1 && d2 && (d1.getTime() == d2.getTime()));
+        return (d1 && d2 && (d1.getTime() === d2.getTime()));
     },
 
     /**
@@ -360,12 +354,39 @@ A.mix(A.DataType.DateMath, {
      * @param d2
      */
     copyHours: function(d1, d2) {
-        var instance = this;
-
         d1.setHours(d2.getHours());
         d1.setMinutes(d2.getMinutes());
         d1.setSeconds(d2.getSeconds());
         d1.setMilliseconds(d2.getMilliseconds());
+    },
+
+    /**
+     * Counts the number of days between two dates excluding the last one. The
+     * order of the dates is not important.
+     *
+     * For example, if the first one is March 8, 2015 and the second one is
+     * March 14, 2015, then the returned value should be 6. If the first one is
+     * March 29, 2015 and the second one is April 4, 2015, then the returned
+     * value should be 6.
+     *
+     * This method iterates over all days between the dates so it can be slow
+     * for dates that are too much far from one another.
+     *
+     * @method countDays
+     * @param d1 One of the days
+     * @param d2 The other day
+     * @return the number of days between the two dates.
+     */
+    countDays: function(d1, d2) {
+        var count = 0,
+            d,
+            step = this.before(d1, d2) ? 1 : -1;
+
+        for (d = d1; this.isDayOverlap(d, d2); d = this.add(d, this.DAY, step)) {
+            count++;
+        }
+
+        return count;
     },
 
     /**
@@ -587,8 +608,7 @@ A.mix(A.DataType.DateMath, {
             startOfWeek = this.getFirstDayOfWeek(targetDate, firstDayOfWeek);
         }
 
-        var startYear = startOfWeek.getFullYear(),
-            startTime = startOfWeek.getTime();
+        var startYear = startOfWeek.getFullYear();
 
         // DST shouldn't be a problem here, math is quicker than setDate();
         endOfWeek = new Date(startOfWeek.getTime() + 6 * this.ONE_DAY_MS);
@@ -683,7 +703,7 @@ A.mix(A.DataType.DateMath, {
     /**
      * Checks if the {date2} is the next day at 00:00:00.
      *
-     * @method isNextDayBoundary
+     * @method isDayBoundary
      * @param {Date} date1 Date
      * @param {Date} date2 Date
      * @return boolean
@@ -703,7 +723,7 @@ A.mix(A.DataType.DateMath, {
      */
     isDayOverlap: function(date1, date2) {
         return ((date1.getFullYear() !== date2.getFullYear()) || (date1.getMonth() !== date2.getMonth()) || (date1.getDate() !==
-            date2.getDate()));;
+            date2.getDate()));
     },
 
     /**
@@ -740,7 +760,7 @@ A.mix(A.DataType.DateMath, {
     isYearOverlapWeek: function(weekBeginDate) {
         var overlaps = false;
         var nextWeek = this.add(weekBeginDate, this.DAY, 6);
-        if (nextWeek.getFullYear() != weekBeginDate.getFullYear()) {
+        if (nextWeek.getFullYear() !== weekBeginDate.getFullYear()) {
             overlaps = true;
         }
         return overlaps;
@@ -757,7 +777,7 @@ A.mix(A.DataType.DateMath, {
     isMonthOverlapWeek: function(weekBeginDate) {
         var overlaps = false;
         var nextWeek = this.add(weekBeginDate, this.DAY, 6);
-        if (nextWeek.getMonth() != weekBeginDate.getMonth()) {
+        if (nextWeek.getMonth() !== weekBeginDate.getMonth()) {
             overlaps = true;
         }
         return overlaps;
@@ -937,12 +957,12 @@ A.mix(A.DataType.DateMath, {
         var time = padHours ? S.padNumber(hours, 2) : String(hours);
 
         if (!omitMinutes) {
-            time += COLON;
+            time += ':';
             time += S.padNumber(minutes, 2);
         }
 
         if (!hideAmPm) {
-            time += (isPM ? PM : AM);
+            time += (isPM ? 'pm' : 'am');
         }
 
         return time;
@@ -961,12 +981,12 @@ A.mix(A.DataType.DateMath, {
 
         var hours = date.getHours();
         var minutes = date.getMinutes();
-        var time = S.padNumber(hours, 2) + COLON + S.padNumber(minutes, 2);
+        var time = S.padNumber(hours, 2) + ':' + S.padNumber(minutes, 2);
 
         if (showSeconds) {
             var seconds = date.getSeconds();
 
-            time += COLON;
+            time += ':';
             time += S.padNumber(seconds, 2);
         }
 
@@ -977,31 +997,31 @@ A.mix(A.DataType.DateMath, {
 (function(Y) {
     // See http://yuilibrary.com/projects/yui3/ticket/2532862
     var YDateEn = {
-        a: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-        A: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-        b: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-        B: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-            "November", "December"],
-        c: "%a %d %b %Y %T %Z",
-        p: ["AM", "PM"],
-        P: ["am", "pm"],
-        r: "%I:%M:%S %p",
-        x: "%d/%m/%y",
-        X: "%T"
+        a: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+        A: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        b: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        B: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+            'November', 'December'],
+        c: '%a %d %b %Y %T %Z',
+        p: ['AM', 'PM'],
+        P: ['am', 'pm'],
+        r: '%I:%M:%S %p',
+        x: '%d/%m/%y',
+        X: '%T'
     };
 
-    Y.namespace("DataType.Date.Locale");
+    Y.namespace('DataType.Date.Locale');
 
-    Y.DataType.Date.Locale["en"] = YDateEn;
+    Y.DataType.Date.Locale.en = YDateEn;
 
-    Y.DataType.Date.Locale["en-US"] = Y.merge(YDateEn, {
-        c: "%a %d %b %Y %I:%M:%S %p %Z",
-        x: "%m/%d/%Y",
-        X: "%I:%M:%S %p"
+    Y.DataType.Date.Locale['en-US'] = Y.merge(YDateEn, {
+        c: '%a %d %b %Y %I:%M:%S %p %Z',
+        x: '%m/%d/%Y',
+        X: '%I:%M:%S %p'
     });
 
-    Y.DataType.Date.Locale["en-GB"] = Y.merge(YDateEn, {
-        r: "%l:%M:%S %P %Z"
+    Y.DataType.Date.Locale['en-GB'] = Y.merge(YDateEn, {
+        r: '%l:%M:%S %P %Z'
     });
-    Y.DataType.Date.Locale["en-AU"] = Y.merge(YDateEn);
+    Y.DataType.Date.Locale['en-AU'] = Y.merge(YDateEn);
 }(A));

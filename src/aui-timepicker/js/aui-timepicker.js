@@ -4,18 +4,7 @@
  * @module aui-timepicker
  */
 
-var Lang = A.Lang,
-
-    ACTIVE_INPUT = 'activeInput',
-    AUTO = 'auto',
-    AUTO_HIDE = 'autoHide',
-    AUTOCOMPLETE = 'autocomplete',
-    DATE_SEPARATOR = 'dateSeparator',
-    MASK = 'mask',
-    SELECT = 'select',
-    SELECTION_CHANGE = 'selectionChange',
-    TRIGGER = 'trigger',
-    VALUES = 'values';
+var Lang = A.Lang;
 
 /**
  * A base class for `TimePickerBase`.
@@ -61,6 +50,20 @@ TimePickerBase.ATTRS = {
      */
     dateSeparator: {
         value: ', '
+    },
+
+    /**
+     * Focus time picker to the time option nearest the timepicker's input time
+     * or the time option nearest the current local time when no input time
+     * is passed.
+     *
+     * @attribute focusSelectedTime
+     * @default true
+     * @type {boolean}
+     */
+    focusSelectedTime: {
+        validator: Lang.isBoolean,
+        value: true
     },
 
     /**
@@ -169,6 +172,19 @@ A.mix(TimePickerBase.prototype, {
     },
 
     /**
+     * Triggers `_focusSelectedValue` method.
+     *
+     * @method focusCurrentValue
+     */
+    focusSelectedValue: function() {
+        var instance = this;
+
+        if (instance.get('focusSelectedTime')) {
+            instance._focusSelectedValue();
+        }
+    },
+
+    /**
      * Creates and returns a new instance of `AutoComplete`.
      *
      * @method getAutoComplete
@@ -178,7 +194,7 @@ A.mix(TimePickerBase.prototype, {
     getAutoComplete: function(node) {
         var instance = this,
             autocomplete = instance.autocomplete,
-            autocompleteConfig = instance.get(AUTOCOMPLETE);
+            autocompleteConfig = instance.get('autocomplete');
 
         if (autocomplete) {
             autocomplete.destroy();
@@ -189,9 +205,37 @@ A.mix(TimePickerBase.prototype, {
         autocomplete.render(instance.getPopover().bodyNode).sendRequest();
         instance.autocomplete = autocomplete;
 
-        autocomplete.after(SELECT, instance._afterAutocompleteSelect, instance);
+        autocomplete.after('select', instance._afterAutocompleteSelect, instance);
 
         return autocomplete;
+    },
+
+    /**
+     * Get the input time value if it exists or return the current local time
+     * in milliseconds
+     *
+     * @method getInputTime
+     * @return {Int} date
+     */
+    getInputTime: function() {
+        var instance = this,
+            curTime,
+            date,
+            inputVal;
+
+            date = new Date();
+
+            curTime = Date.parse(date.toUTCString(date.getTime()));
+
+            inputVal = instance.getParsedDatesFromInputValue();
+
+        if (inputVal) {
+            inputVal = inputVal.pop();
+
+            curTime = Date.parse(inputVal);
+        }
+
+        return curTime;
     },
 
     /**
@@ -214,12 +258,12 @@ A.mix(TimePickerBase.prototype, {
      */
     useInputNode: function(node) {
         var instance = this,
-            activeInput = instance.get(ACTIVE_INPUT),
+            activeInput = instance.get('activeInput'),
             popover = instance.getPopover();
 
         if (activeInput !== node) {
-            instance.set(ACTIVE_INPUT, node);
-            popover.set(TRIGGER, node);
+            instance.set('activeInput', node);
+            popover.set('trigger', node);
             instance.getAutoComplete(node);
         }
 
@@ -246,8 +290,59 @@ A.mix(TimePickerBase.prototype, {
 
         instance.selectDates(parsed);
 
-        if (instance.get(AUTO_HIDE)) {
+        if (instance.get('autoHide')) {
             instance.hide();
+        }
+    },
+
+    /**
+     * Select time nearest the current input time or local time.
+     *
+     * @method focusSelectedValue
+     * @protected
+     */
+    _focusSelectedValue: function() {
+        var instance = this,
+            deltaTime,
+            curTime,
+            mask,
+            nodeTime,
+            nodeList,
+            popoverBody,
+            previousTime,
+            targetNode,
+            timeVals,
+            topOffset;
+
+            popoverBody = instance.getPopover().bodyNode;
+
+            nodeList = popoverBody.all('.yui3-aclist-item');
+
+        if (!nodeList.isEmpty()) {
+            curTime = instance.getInputTime();
+
+            mask = instance.get('mask');
+            timeVals = instance.get('values');
+
+            targetNode = nodeList.item(0);
+
+            previousTime = (curTime * 2);
+
+            for (var i = 0; i < timeVals.length; i++) {
+                nodeTime = Date.parse(A.Date.parse(mask, timeVals[i]));
+
+                deltaTime = Math.abs(curTime - nodeTime);
+
+                if (deltaTime < previousTime) {
+                    targetNode = nodeList.item(i);
+
+                    previousTime = deltaTime;
+                }
+            }
+
+            topOffset = targetNode.get('offsetTop');
+
+            popoverBody.set('scrollTop', topOffset);
         }
     },
 
@@ -262,7 +357,7 @@ A.mix(TimePickerBase.prototype, {
         var instance = this;
 
         if (selection) {
-            instance.fire(SELECTION_CHANGE, {
+            instance.fire('selectionChange', {
                 newSelection: selection
             });
         }
@@ -279,8 +374,8 @@ A.mix(TimePickerBase.prototype, {
      */
     _setAutocomplete: function(val) {
         var instance = this,
-            dateSeparator = instance.get(DATE_SEPARATOR),
-            values = instance.get(VALUES);
+            dateSeparator = instance.get('dateSeparator'),
+            values = instance.get('values');
 
         return A.merge({
             align: false,
@@ -290,7 +385,7 @@ A.mix(TimePickerBase.prototype, {
             queryDelimiter: dateSeparator,
             source: values,
             tabSelect: false,
-            width: AUTO
+            width: 'auto'
         }, val);
     },
 
@@ -310,7 +405,7 @@ A.mix(TimePickerBase.prototype, {
             formatted.push(
                 A.Date.format(
                     A.Date.parse('%H:%M', timeISOFormat), {
-                        format: instance.get(MASK)
+                        format: instance.get('mask')
                     }));
         });
 

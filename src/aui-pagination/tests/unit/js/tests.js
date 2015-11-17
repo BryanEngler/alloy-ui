@@ -17,9 +17,7 @@ YUI.add('aui-pagination-tests', function(Y) {
 
         name: 'Pagination control rendering tests',
 
-        /**
-         * @tests AUI-1106
-         */
+        // Tests: AUI-1106
         'assert that pagination controls do not render': function() {
             var instance = this,
                 paginationContent,
@@ -39,6 +37,30 @@ YUI.add('aui-pagination-tests', function(Y) {
             item.simulate('click');
 
             Y.Test.Assert.isTrue(item.hasClass('active'));
+        }
+    }));
+
+    //--------------------------------------------------------------------------
+    // Test Case for Testing Pagination Links States
+    //--------------------------------------------------------------------------
+
+    suite.add(new Y.Test.Case({
+
+        name: 'Pagination link state tests',
+
+        // Tests: AUI-1274
+        'Assert that Pagination State and Pagination UI are in Sync': function() {
+            var paginationItems = Y.one('#pagination .pagination-content').all('li'),
+                state = {
+                    page: 5
+                },
+                pageIndex = (state.page - 1);
+
+            pagination.setState(state);
+
+            paginationItems.each(function(item, index) {
+                Y.Test.Assert.isTrue((index === pageIndex) === item.hasClass('active'));
+            });
         }
     }));
 

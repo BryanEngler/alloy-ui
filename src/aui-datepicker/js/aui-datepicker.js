@@ -8,18 +8,7 @@ var Lang = A.Lang,
 
     clamp = function(value, min, max) {
         return Math.min(Math.max(value, min), max);
-    },
-
-    ACTIVE_INPUT = 'activeInput',
-    AUTO_HIDE = 'autoHide',
-    CALENDAR = 'calendar',
-    DATE = 'date',
-    DATE_CLICK = 'dateClick',
-    MULTIPLE = 'multiple',
-    PANES = 'panes',
-    SELECTION_CHANGE = 'selectionChange',
-    SELECTION_MODE = 'selectionMode',
-    TRIGGER = 'trigger';
+    };
 
 /**
  * A base class for `DatePickerBase`.
@@ -56,6 +45,18 @@ DatePickerBase.PANES = [
 DatePickerBase.ATTRS = {
 
     /**
+     * Sets the initial visibility.
+     *
+     * @attribute autoHide
+     * @default true
+     * @type {Boolean}
+     */
+    autoHide: {
+        validator: Lang.isBoolean,
+        value: true
+    },
+
+    /**
      * Stores the configuration of the `Calendar` instance.
      *
      * @attribute calendar
@@ -69,18 +70,6 @@ DatePickerBase.ATTRS = {
     },
 
     /**
-     * Sets the initial visibility.
-     *
-     * @attribute autoHide
-     * @default true
-     * @type {Boolean}
-     */
-    autoHide: {
-        validator: Lang.isBoolean,
-        value: true
-    },
-
-    /**
      * Defines how many panes should be rendered.
      *
      * @attribute panes
@@ -90,8 +79,8 @@ DatePickerBase.ATTRS = {
      */
     panes: {
         setter: '_setPanes',
-        value: 1,
         validator: Lang.isNumber,
+        value: 1,
         writeOnce: true
     }
 };
@@ -109,7 +98,7 @@ A.mix(DatePickerBase.prototype, {
     initializer: function() {
         var instance = this;
 
-        instance.after(SELECTION_CHANGE, instance._afterDatePickerSelectionChange);
+        instance.after('selectionChange', instance._afterDatePickerSelectionChange);
     },
 
     /**
@@ -154,21 +143,21 @@ A.mix(DatePickerBase.prototype, {
             // attribute, then switch it back after calendar renders.
             originalCalendarTemplate = A.CalendarBase.CONTENT_TEMPLATE;
             A.CalendarBase.CONTENT_TEMPLATE =
-                DatePickerBase.PANES[instance.get(PANES) - 1];
+                DatePickerBase.PANES[instance.get('panes') - 1];
 
             // Initialize the popover instance before calendar renders since it
             // will use popover.bodyNode as render node.
             instance.getPopover();
 
-            calendar = new A.Calendar(instance.get(CALENDAR));
+            calendar = new A.Calendar(instance.get('calendar'));
             calendar.render(instance.popover.bodyNode);
             instance.calendar = calendar;
 
             calendar.after(
-                SELECTION_CHANGE, instance._afterCalendarSelectionChange,
+                'selectionChange', instance._afterCalendarSelectionChange,
                 instance);
             calendar.after(
-                DATE_CLICK, instance._afterCalendarDateClick,
+                'dateClick', instance._afterCalendarDateClick,
                 instance);
 
             // Restore the original CalendarBase template.
@@ -191,6 +180,27 @@ A.mix(DatePickerBase.prototype, {
     },
 
     /**
+     * Selects dates in the 'Calendar' while only allowing
+     * the calendar to fire 'selectionChange' once.
+     *
+     * @method selectDatesFromInputValue
+     * @param dates
+     */
+    selectDatesFromInputValue: function(dates) {
+        var instance = this,
+            calendar = instance.getCalendar();
+
+        A.Array.each(
+            dates,
+            function(date) {
+                calendar._addDateToSelection(date, true);
+            }
+        );
+
+        calendar._fireSelectionChange();
+    },
+
+    /**
      * Renders the widget in an `<input>` node.
      *
      * @method useInputNode
@@ -200,12 +210,15 @@ A.mix(DatePickerBase.prototype, {
         var instance = this,
             popover = instance.getPopover();
 
-        popover.set(TRIGGER, node);
-        instance.set(ACTIVE_INPUT, node);
+        popover.set('trigger', node);
+        instance.set('activeInput', node);
 
-        instance.alignTo(node);
+        if (!popover.get('visible')) {
+            instance.alignTo(node);
+        }
+
         instance.clearSelection(true);
-        instance.selectDates(instance.getParsedDatesFromInputValue());
+        instance.selectDatesFromInputValue(instance.getParsedDatesFromInputValue());
     },
 
     /**
@@ -217,9 +230,9 @@ A.mix(DatePickerBase.prototype, {
     _afterCalendarDateClick: function() {
         var instance = this,
             calendar = instance.getCalendar(),
-            selectionMode = calendar.get(SELECTION_MODE);
+            selectionMode = calendar.get('selectionMode');
 
-        if (instance.get(AUTO_HIDE) && (selectionMode !== MULTIPLE)) {
+        if (instance.get('autoHide') && (selectionMode !== 'multiple')) {
             instance.hide();
         }
     },
@@ -232,11 +245,20 @@ A.mix(DatePickerBase.prototype, {
      * @protected
      */
     _afterCalendarSelectionChange: function(event) {
-        var instance = this;
+        var instance = this,
+            newDates,
+            newSelection = event.newSelection,
+            prevDates = instance.getSelectedDates() || [];
 
-        instance.fire(SELECTION_CHANGE, {
-            newSelection: event.newSelection
-        });
+        newDates = newSelection.concat(prevDates);
+
+        newDates = A.Array.dedupe(newDates);
+
+        if (newDates.length !== prevDates.length || newSelection.length < prevDates.length) {
+            instance.fire('selectionChange', {
+                newSelection: newSelection
+            });
+        }
     },
 
     /**
@@ -252,19 +274,18 @@ A.mix(DatePickerBase.prototype, {
     },
 
     /**
-     * Sets the first selected date in the `Calendar`.
+     * Checks if the given dates are referencing the same
+     * day, month and year.
      *
-     * @method _setCalendarToFirstSelectedDate
+     * @method _isSameDay
+     * @param date1
+     * @param date2
      * @protected
      */
-    _setCalendarToFirstSelectedDate: function() {
-        var instance = this,
-            dates = instance.getSelectedDates(),
-            firstSelectedDate = dates[0];
-
-        if (firstSelectedDate) {
-            instance.getCalendar().set(DATE, firstSelectedDate);
-        }
+    _isSameDay: function(date1, date2) {
+        return date1.getDate() === date2.getDate() &&
+            date1.getMonth() === date2.getMonth() &&
+            date1.getFullYear() === date2.getFullYear();
     },
 
     /**
@@ -282,6 +303,22 @@ A.mix(DatePickerBase.prototype, {
         instance.alignTo(event.currentTarget);
 
         instance._userInteractionInProgress = false;
+    },
+
+    /**
+     * Sets the first selected date in the `Calendar`.
+     *
+     * @method _setCalendarToFirstSelectedDate
+     * @protected
+     */
+    _setCalendarToFirstSelectedDate: function() {
+        var instance = this,
+            dates = instance.getSelectedDates(),
+            firstSelectedDate = dates[0];
+
+        if (firstSelectedDate) {
+            instance.getCalendar().set('date', firstSelectedDate);
+        }
     },
 
     /**

@@ -5,11 +5,6 @@
  */
 
 var QS = A.QueryString,
-
-    _BLANK = '',
-
-    _ANCHOR_SEPARATOR = '#',
-    _QUERY_SEPARATOR = '?',
     _SCHEME_SEPARATOR = '://',
 
     URL_SOURCE = 0,
@@ -40,8 +35,10 @@ function Url(url) {
 
 // Loose implementation of http://tools.ietf.org/html/rfc3986
 // See http://stevenlevithan.com/demo/parseuri/js/assets/parseuri.js
-Url.URI_REGEX_RFC3986 =
-    /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/;
+Url.URI_REGEX_RFC3986 = new RegExp('^(?:(?![^:@]+:[^:@\\/]*@)([^:\\/?#.]+):)' +
+    '?(?:\\/\\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\\/?#]*)(?::(\\d*))?)' +
+    '(((\\/(?:[^?#](?![^?#\\/]*\\.[^?#\\/.]+(?:[?#]|$)))*\\/?)?([^?#\\/]*)' +
+    ')(?:\\?([^#]*))?(?:#(.*))?)');
 
 /**
  * A base class for `A.Url`.
@@ -553,19 +550,19 @@ A.mix(Url.prototype, {
 
         if (instance._query) {
             url.push(
-                _QUERY_SEPARATOR,
+                '?',
                 instance._query
             );
         }
 
         if (instance._anchor) {
             url.push(
-                _ANCHOR_SEPARATOR,
+                '#',
                 instance._anchor
             );
         }
 
-        return url.join(_BLANK);
+        return url.join('');
     },
 
     /**
@@ -578,7 +575,7 @@ A.mix(Url.prototype, {
         var instance = this;
 
         if (!instance._parameters) {
-            instance._parameters = QS.parse(instance._query || _BLANK);
+            instance._parameters = QS.parse(instance._query || '');
         }
 
         instance._query = QS.stringify(instance._parameters);

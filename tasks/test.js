@@ -1,89 +1,81 @@
-/*
- * Copyright (c) 2013, Liferay Inc. All rights reserved.
- * Code licensed under the BSD License:
- * https://github.com/liferay/alloy-ui/blob/master/LICENSE.md
- *
- * @author Zeno Rocha <zeno.rocha@liferay.com>
- * @author Eduardo Lundgren <eduardo.lundgren@liferay.com>
- */
+var gulp = require('gulp');
+var gutil = require('gulp-util');
+var path = require('path');
+var report = require('./report');
+var spawn = require('spawn-local-bin');
 
-var TASK = {
-    name: 'test',
-    description: 'Run unit tests using Yogi'
-};
+var ROOT = path.join(__dirname, '..');
+var CWD = process.env.INIT_CWD;
 
-// -- Requires -----------------------------------------------------------------
-var async = require('async');
-var command = require('command');
+function normalizeCwd(cwd) {
+    if (cwd.substr(-11) === '/tests/unit') {
+        return cwd.substr(0, cwd.length - 11);
+    }
 
-// -- Globals ------------------------------------------------------------------
-var ROOT = process.cwd();
+    if (cwd.substr(-6) === '/tests') {
+        return cwd.substr(0, cwd.length - 6);
+    }
 
-module.exports = function(grunt) {
-    grunt.registerTask(TASK.name, TASK.description, function() {
-        var done = this.async();
+    return cwd;
+}
 
-        async.series([
-            function(mainCallback) {
-                    exports._setGruntConfig(mainCallback);
-            },
-            function(mainCallback) {
-                    exports._runYogi(mainCallback);
-            }],
-            function(err) {
-                if (err) {
-                    done(false);
-                }
-                else {
-                    done();
-                }
-            }
-        );
-    });
+gulp.task('test', function(callback) {
+    var args = ['test'];
+    var cmd = 'yogi';
 
-    exports._setGruntConfig = function(mainCallback) {
-        var options = grunt.option.flags();
+    spawn(cmd, args, CWD)
+        .on('exit', callback);
+});
 
-        options.forEach(function(option) {
-            var key;
-            var value;
-            var valueIndex;
+function testCoverage(cwd, callback) {
+    var args = ['test', '--coverage',
+        '--coverdir', path.join(ROOT, 'coverage')];
+    var cmd = 'yogi';
 
-            // Normalize option
-            option = option.replace(/^--(no-)?/, '');
-
-            valueIndex = option.lastIndexOf('=');
-
-            // String parameter
-            if (valueIndex !== -1) {
-                key = option.substring(0, valueIndex);
-                value = option.substring(valueIndex + 1);
-            }
-            // Boolean parameter
-            else {
-                key = option;
-                value = grunt.option(key);
+    spawn(cmd, args, CWD)
+        .on('exit', function(err) {
+            if (err === 0) {
+                gutil.log('See results with ' +
+                    gutil.colors.yellow('gulp report') + ' or ' +
+                    gutil.colors.yellow('gulp report-browser'));
             }
 
-            grunt.config([TASK.name, key], value);
+            if (callback) {
+                callback(err);
+            }
         });
+}
 
-        mainCallback();
-    };
+gulp.task('test-coverage', function(callback) {
+    testCoverage(CWD, callback);
+});
 
-    exports._runYogi = function(mainCallback) {
-        var args = ['test'];
+gulp.task('test-coverage-watch', function() {
+    var files = [
+        path.join(ROOT, 'src/**/*.js'),
+        path.join('!', ROOT, 'src/aui-base/js/*.js'),
+        path.join('!', ROOT, 'src/yui/js/*.js')
+    ];
 
-        if (grunt.config([TASK.name, 'coverage'])) {
-            args.push('--coverage');
-        }
+    gulp.watch(files, function(data) {
+        var cwd = normalizeCwd(path.join(path.dirname(data.path), '..'));
 
-        command.open(ROOT)
-            .on('stdout', command.writeTo(process.stdout))
-            .on('stderr', command.writeTo(process.stderr))
-            .exec('yogi', args)
-            .then(function() {
-                mainCallback(this.lastOutput.stdout);
-            });
-    };
-};
+        testCoverage(cwd, function (err) {
+            if (err === 0) {
+                report();
+            }
+        });
+    });
+});
+
+gulp.task('test-browser', function(callback) {
+    var args = [];
+    var cmd = 'yeti';
+
+    if (CWD === ROOT) {
+        CWD = path.join(CWD, 'src');
+    }
+
+    spawn(cmd, args, CWD)
+        .on('exit', callback);
+});

@@ -1,13 +1,4 @@
-var Lang = A.Lang,
-
-    TRIGGER_CHANGE = 'triggerChange',
-    TRIGGER = 'trigger',
-    BIND_DOM_EVENTS = 'bindDOMEvents',
-    TRIGGER = 'trigger',
-    TRIGGER_CHANGE = 'triggerChange',
-    TRIGGER_HIDE_EVENT = 'triggerHideEvent',
-    TRIGGER_TOGGLE_EVENT = 'triggerToggleEvent',
-    TRIGGER_SHOW_EVENT = 'triggerShowEvent';
+var Lang = A.Lang;
 
 /**
  * Widget extension, which can be used to add trigger support to the
@@ -71,6 +62,21 @@ WidgetTrigger.ATTRS = {
         value: null
     },
 
+    triggerShowFn: {
+        validator: Lang.isString,
+        value: 'show'
+    },
+
+    triggerHideFn: {
+        validator: Lang.isString,
+        value: 'hide'
+    },
+
+    triggerToggleFn: {
+        validator: Lang.isString,
+        value: 'toggle'
+    },
+
     /**
      * DOM event to toggle the tooltip.
      *
@@ -83,7 +89,7 @@ WidgetTrigger.ATTRS = {
 };
 
 A.mix(WidgetTrigger.prototype, {
-    _eventHandles: null,
+    _triggerEventHandles: null,
 
     /**
      * Construction logic executed during WidgetTrigger
@@ -96,7 +102,7 @@ A.mix(WidgetTrigger.prototype, {
 
         A.after(instance._afterRenderUIWT, instance, 'renderUI');
 
-        instance.after(TRIGGER_CHANGE, instance._afterTriggerChange);
+        instance.after('triggerChange', instance._afterTriggerChange);
     },
 
     /**
@@ -108,7 +114,7 @@ A.mix(WidgetTrigger.prototype, {
     destructor: function() {
         var instance = this;
 
-        (new A.EventHandle(instance._eventHandles)).detach();
+        (new A.EventHandle(instance._triggerEventHandles)).detach();
     },
 
     /**
@@ -121,7 +127,7 @@ A.mix(WidgetTrigger.prototype, {
     _afterRenderUIWT: function() {
         var instance = this;
 
-        instance._uiSetTrigger(instance.get(TRIGGER));
+        instance._uiSetTrigger(instance.get('trigger'));
     },
 
     /**
@@ -149,30 +155,36 @@ A.mix(WidgetTrigger.prototype, {
             eventHandles,
             triggerHideEvent,
             triggerShowEvent,
-            triggerToggleEvent;
+            triggerToggleEvent,
+            triggerHideFn,
+            triggerShowFn,
+            triggerToggleFn;
 
-        (new A.EventHandle(instance._eventHandles)).detach();
+        (new A.EventHandle(instance._triggerEventHandles)).detach();
 
-        if (val && instance.get(BIND_DOM_EVENTS)) {
-            eventHandles = instance._eventHandles = [];
+        if (val && instance.get('bindDOMEvents')) {
+            eventHandles = instance._triggerEventHandles = [];
 
-            triggerHideEvent = instance.get(TRIGGER_HIDE_EVENT);
-            triggerShowEvent = instance.get(TRIGGER_SHOW_EVENT);
-            triggerToggleEvent = instance.get(TRIGGER_TOGGLE_EVENT);
+            triggerHideEvent = instance.get('triggerHideEvent');
+            triggerShowEvent = instance.get('triggerShowEvent');
+            triggerToggleEvent = instance.get('triggerToggleEvent');
+            triggerHideFn = instance.get('triggerHideFn');
+            triggerShowFn = instance.get('triggerShowFn');
+            triggerToggleFn = instance.get('triggerToggleFn');
 
             if (triggerHideEvent) {
                 eventHandles.push(
-                    val.on(instance.get(TRIGGER_HIDE_EVENT), instance.hide, instance));
+                    val.on(instance.get('triggerHideEvent'), A.bind(instance[triggerHideFn], instance)));
             }
 
             if (triggerShowEvent) {
                 eventHandles.push(
-                    val.on(instance.get(TRIGGER_SHOW_EVENT), instance.show, instance));
+                    val.on(instance.get('triggerShowEvent'), A.bind(instance[triggerShowFn], instance)));
             }
 
             if (triggerToggleEvent) {
                 eventHandles.push(
-                    val.on(instance.get(TRIGGER_TOGGLE_EVENT), instance.toggle, instance));
+                    val.on(instance.get('triggerToggleEvent'), A.bind(instance[triggerToggleFn], instance)));
             }
         }
     }

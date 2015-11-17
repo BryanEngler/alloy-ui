@@ -7,18 +7,8 @@
 var Lang = A.Lang,
     Do = A.Do,
 
-    STR_ABOUT_BLANK = 'about:blank',
-    STR_BODY = 'body',
-    STR_HREF = 'href',
-    STR_IFRAME = 'iframe',
-    STR_IMAGE = 'image',
-    STR_LOADING = 'loading',
-    STR_PROVIDERS = 'providers',
-    STR_SRC = 'src',
-
-    NAME = 'mediaViewerPlugin',
-
-    DATA_OPTIONS = 'data-options',
+    CSS_IMAGE_VIEWER_IMAGE = A.getClassName('image', 'viewer', 'base', 'image'),
+    CSS_IMAGE_VIEWER_LOADING = A.getClassName('image', 'viewer', 'base', 'loading'),
 
     DEFAULT_OPTIONS = {
         height: 360,
@@ -49,7 +39,7 @@ var MediaViewerPlugin = A.Component.create({
      * @type String
      * @static
      */
-    NAME: NAME,
+    NAME: 'mediaViewerPlugin',
 
     /**
      * Static property provides a string to identify the namespace.
@@ -81,13 +71,20 @@ var MediaViewerPlugin = A.Component.create({
             validator: Lang.isObject,
             value: {
                 'flash': {
-                    container: '<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="{width}" height="{height}"><param name="wmode" value="{wmode}" /><param name="allowfullscreen" value="true" /><param name="allowscriptaccess" value="always" /><param name="movie" value="{media}" /><embed src="{media}" type="application/x-shockwave-flash" allowfullscreen="true" allowscriptaccess="always" width="{width}" height="{height}" wmode="{wmode}"></embed></object>',
+                    container: '<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" ' +
+                        'width="{width}" height="{height}"><param name="wmode" value="{wmode}" />' +
+                        '<param name="allowfullscreen" value="true" />' +
+                        '<param name="allowscriptaccess" value="always" /><param name="movie" value="{media}" />' +
+                        '<embed src="{media}" type="application/x-shockwave-flash" allowfullscreen="true"' +
+                        ' allowscriptaccess="always" width="{width}" height="{height}" wmode="{wmode}">' +
+                        '</embed></object>',
                     matcher: /\b.swf\b/i,
                     options: DEFAULT_OPTIONS,
                     mediaRegex: /([^?&#]+)/
                 },
                 'youtube': {
-                    container: '<iframe width="{width}" height="{height}" src="http://www.youtube.com/embed/{media}" frameborder="0" allowfullscreen></iframe>',
+                    container: '<iframe width="{width}" height="{height}" src="http://www.youtube.com/embed/{media}" ' +
+                        'frameborder="0" allowfullscreen></iframe>',
                     matcher: new RegExp(
                         Lang.sub(
                             REGEX_DOMAIN, {
@@ -100,7 +97,9 @@ var MediaViewerPlugin = A.Component.create({
                     mediaRegex: /[\?&]v=([^&#]*)/i
                 },
                 'vimeo': {
-                    container: '<iframe src="http://player.vimeo.com/video/{media}?title=0&amp;byline=0&amp;portrait=0&amp;color=ffffff" width="{width}" height="{height}" frameborder="0"></iframe>',
+                    container: '<iframe ' +
+                        'src="http://player.vimeo.com/video/{media}?title=0&amp;byline=0&amp;portrait=0&amp;color=ffffff"' +
+                        ' width="{width}" height="{height}" frameborder="0"></iframe>',
                     matcher: new RegExp(
                         Lang.sub(
                             REGEX_DOMAIN, {
@@ -135,131 +134,21 @@ var MediaViewerPlugin = A.Component.create({
          * @param config
          * @protected
          */
-        initializer: function(config) {
-            var instance = this;
-
-            var handles = instance._handles;
-
-            handles.changeReqeust = instance.afterHostMethod('_changeRequest', instance._restoreMedia);
-            handles.close = instance.beforeHostMethod('close', instance.close);
-            handles.loadMedia = instance.beforeHostMethod('loadImage', instance.loadMedia);
-            handles.preloadImage = instance.beforeHostMethod('preloadImage', instance.preloadImage);
+        initializer: function() {
+            this._eventHandles = [
+                this.beforeHostMethod('_loadImage', this._beforeLoadImage),
+                this.beforeHostMethod('_renderImage', this._beforeRenderImage)
+            ];
         },
 
         /**
-         * Checks if the media type is an image, if not empty the content.
+         * Destructor implementation for the `A.MediaViewerPlugin` class. Lifecycle.
          *
-         * @method close
+         * @method destructor
+         * @protected
          */
-        close: function() {
-            var instance = this;
-
-            var host = instance.get('host');
-
-            var source = host.getCurrentLink();
-
-            var mediaType = instance._getMediaType(source.attr('href'));
-
-            if (mediaType != STR_IMAGE) {
-                instance._redirectIframe(STR_ABOUT_BLANK);
-
-                host.setStdModContent(STR_BODY, '');
-            }
-        },
-
-        /**
-         * Loads a media based on the `providers` and include it on a container.
-         *
-         * @method loadMedia
-         * @param linkHref
-         */
-        loadMedia: function(linkHref) {
-            var instance = this;
-
-            var host = instance.get('host');
-
-            var mediaType = instance._getMediaType(linkHref);
-
-            var result = true;
-
-            instance._redirectIframe(STR_ABOUT_BLANK);
-
-            if (mediaType != STR_IMAGE) {
-                var providers = instance.get(STR_PROVIDERS)[mediaType];
-
-                var source = host.getCurrentLink();
-
-                var options = instance._updateOptions(
-                    source,
-                    A.clone(providers.options)
-                );
-
-                var media = providers.mediaRegex.exec(linkHref);
-
-                if (media) {
-                    options.media = media[1];
-                }
-
-                var container = Lang.sub(
-                    providers.container,
-                    options
-                );
-
-                host.setStdModContent(STR_BODY, container);
-
-                host._syncImageViewerUI();
-
-                instance._uiSetContainerSize(options.width, options.height);
-
-                host._setAlignCenter(true);
-
-                host.set(STR_LOADING, false);
-
-                host.fire(
-                    'load', {
-                        media: media
-                    }
-                );
-
-                if (host.get('preloadNeighborImages')) {
-                    var currentIndex = host.get('currentIndex');
-
-                    host.preloadImage(currentIndex + 1);
-                    host.preloadImage(currentIndex - 1);
-                }
-
-                result = new Do.Prevent();
-            }
-
-            return result;
-        },
-
-        /**
-         * Preloads an image.
-         *
-         * @method preloadImage
-         * @param index
-         */
-        preloadImage: function(index) {
-            var instance = this;
-
-            var host = instance.get('host');
-
-            var currentLink = host.getLink(index);
-
-            var result = new Do.Prevent();
-
-            if (currentLink) {
-                var linkHref = currentLink.attr(STR_HREF);
-
-                var mediaType = instance._getMediaType(linkHref);
-
-                if (mediaType == STR_IMAGE) {
-                    result = true;
-                }
-            }
-
-            return result;
+        destructor: function() {
+            (new A.EventHandle(this._eventHandles)).detach();
         },
 
         /**
@@ -272,13 +161,13 @@ var MediaViewerPlugin = A.Component.create({
         _getMediaType: function(source) {
             var instance = this;
 
-            var providers = instance.get(STR_PROVIDERS);
+            var providers = instance.get('providers');
 
-            var mediaType = STR_IMAGE;
+            var mediaType = 'image';
 
             A.some(
                 providers,
-                function(value, key, collection) {
+                function(value, key) {
                     return value.matcher.test(source) && (mediaType = key);
                 }
             );
@@ -287,70 +176,73 @@ var MediaViewerPlugin = A.Component.create({
         },
 
         /**
-         * Sets the `src` attribute in the iframe.
+         * If the media in the specified index is an image, this will defer to
+         * the host's _loadImage default behavior. Otherwise, _loadImage will be
+         * prevented and the media node will be loaded by this function instead.
          *
-         * @method _redirectIframe
-         * @param source
+         * @method _beforeLoadImage
+         * @param {Number} index The index of the image to load.
          * @protected
          */
-        _redirectIframe: function(source) {
-            var instance = this;
+        _beforeLoadImage: function(index) {
+            var host = this.get('host'),
+                container = host._getCurrentImageContainer(),
+                link = host.get('links').item(index),
+                linkHref = link.getAttribute('href'),
+                media,
+                mediaNode,
+                mediaType = this._getMediaType(linkHref),
+                options,
+                provider;
 
-            var bodyNode = instance.get('host.bodyNode');
+            if (mediaType !== 'image') {
+                mediaNode = host._getCurrentImage();
+                if (!mediaNode) {
+                    provider = this.get('providers')[mediaType];
+                    options = this._updateOptions(
+                        link,
+                        A.clone(provider.options)
+                    );
 
-            if (bodyNode) {
-                var iframe = bodyNode.one(STR_IFRAME);
+                    media = provider.mediaRegex.exec(linkHref);
+                    if (media) {
+                        options.media = media[1];
+                    }
 
-                if (iframe) {
-                    iframe.attr(STR_SRC, source);
+                    mediaNode = A.Node.create(Lang.sub(
+                        provider.container,
+                        options
+                    ));
+                    mediaNode.addClass(CSS_IMAGE_VIEWER_IMAGE);
+
+                    mediaNode.setData('loaded', true);
+                    container.removeClass(CSS_IMAGE_VIEWER_LOADING);
+
+                    container.prepend(mediaNode);
                 }
+
+                return new Do.Prevent();
             }
         },
 
         /**
-         * Restores a media.
+         * If the media in the specified index is an image, this will defer to
+         * the host's _renderImage default behavior. Otherwise, _renderImage will
+         * be prevented, as the media node should only be rendered when it's loaded
+         * for the first time (on _beforeLoadImage).
          *
-         * @method _restoreMedia
-         * @param event
+         * @method _beforeRenderImage
+         * @param {Number} index The index of the media to be loaded.
          * @protected
          */
-        _restoreMedia: function(event) {
-            var instance = this;
+        _beforeRenderImage: function(index) {
+            var host = this.get('host'),
+                link = host.get('links').item(index),
+                linkHref = link.getAttribute('href');
 
-            var host = instance.get('host');
-
-            var source = host.getCurrentLink();
-
-            var href = source.attr('href');
-
-            var mediaType = instance._getMediaType(href);
-
-            if (mediaType != STR_IMAGE && !host.getStdModNode(STR_BODY).html()) {
-                host._processChangeRequest();
+            if (this._getMediaType(linkHref) !== 'image') {
+                return new Do.Prevent();
             }
-        },
-
-        /**
-         * Sets the container width and height in the UI.
-         *
-         * @method _uiSetContainerSize
-         * @param width
-         * @param height
-         * @protected
-         */
-        _uiSetContainerSize: function(width, height) {
-            var instance = this;
-
-            var host = instance.get('host'),
-                bodyNode = host.bodyNode,
-                footerNode = host.footerNode;
-
-            footerNode.setStyle('width', width);
-
-            bodyNode.setStyles({
-                height: height,
-                width: width
-            });
         },
 
         /**
@@ -362,12 +254,12 @@ var MediaViewerPlugin = A.Component.create({
          * @protected
          */
         _updateOptions: function(source, options) {
-            var dataOptions = source.attr(DATA_OPTIONS);
-            var linkHref = source.attr(STR_HREF);
+            var dataOptions = source.attr('data-options');
+            var linkHref = source.attr('href');
 
             A.each(
                 options,
-                function(value, key, collection) {
+                function(value, key) {
                     var regexParam = new RegExp(
                         Lang.sub(
                             REGEX_PARAM, {
@@ -385,12 +277,10 @@ var MediaViewerPlugin = A.Component.create({
             );
 
             return options;
-        },
-
-        _handles: {}
+        }
     },
 
-    DATA_OPTIONS: DATA_OPTIONS,
+    DATA_OPTIONS: 'data-options',
 
     DEFAULT_OPTIONS: DEFAULT_OPTIONS,
 

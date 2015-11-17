@@ -13,9 +13,7 @@ var Lang = A.Lang,
         if (!isNaN(val)) {
             return val;
         }
-    },
-
-    LOCALE = 'locale';
+    };
 
 /**
  * A base class for `A.DateParser`.
@@ -205,8 +203,8 @@ A.mix(DateParser.prototype, {
             compiled = instance.compiled,
             i,
             length = compiled.length,
-            nextPart,
             part,
+            separatorPos,
             textLength,
             textPos = [0],
             value;
@@ -220,7 +218,6 @@ A.mix(DateParser.prototype, {
 
         for (i = 0; i < length; i++) {
             part = compiled[i];
-            nextPart = compiled[i + 1];
 
             if (textPos[0] > textLength) {
                 break;
@@ -245,7 +242,14 @@ A.mix(DateParser.prototype, {
                 }
             }
             else {
-                value = instance._getNextValue(text, textPos, nextPart);
+                separatorPos = instance._findNextSeparatorPos(compiled, i, text, textPos);
+
+                // We may have skipped tokens and separators that were not present in the,
+                // text, so update the compiled index to be the one right before the
+                // separator that will be used.
+                i = separatorPos - 1;
+
+                value = instance._getNextValue(text, textPos, compiled[separatorPos]);
             }
 
             if (part.hints.setter) {
@@ -273,7 +277,7 @@ A.mix(DateParser.prototype, {
         var instance = this,
             aggregate = A.Date.aggregates[token];
 
-        if (aggregate === LOCALE) {
+        if (aggregate === 'locale') {
             aggregate = instance._getLangResource(token);
         }
 
@@ -325,6 +329,32 @@ A.mix(DateParser.prototype, {
         }
 
         return bestMatchIndex;
+    },
+
+    /**
+     * Looks for the position of the next separator that is included in the text.
+     *
+     * @method _findNextSeparatorPos
+     * @param {Array} compiled Information about the compiled mask
+     * @param {Number} compiledPos Current position in the compiled array
+     * @param {String} text The text that is being parsed
+     * @param {Number} Current position in the text being parsed
+     * @returns {Number} Position of the next separator in the compiled array
+     * @protected
+     */
+    _findNextSeparatorPos: function(compiled, compiledPos, text, textPos) {
+        var length = compiled.length,
+            separatorPos = compiledPos + 1,
+            j;
+
+        for (j = compiledPos + 1; j < length; j++) {
+            if (Lang.isString(compiled[j]) && text.indexOf(compiled[j], textPos[0] + 1) > textPos[0]) {
+                separatorPos = j;
+                break;
+            }
+        }
+
+        return separatorPos;
     },
 
     /**
@@ -388,13 +418,15 @@ A.mix(DateParser.prototype, {
         if (Lang.isValue(calendar.minutes)) {
             opt_date.setMinutes(calendar.minutes);
         }
+        else {
+            opt_date.setMinutes(0);
+        }
 
         if (Lang.isValue(calendar.seconds)) {
             opt_date.setSeconds(calendar.seconds);
         }
-
-        if (Lang.isValue(calendar.tz)) {
-            // TODO
+        else {
+            opt_date.setSeconds(0);
         }
 
         return opt_date;
@@ -917,11 +949,11 @@ A.Date.dateparser = new A.DateParser();
  * @return {Date} native JavaScript Date. Returns `false` if cannot parse.
  */
 
-var YDateParser = A.Date.parse;
+var yDateParser = A.Date.parse;
 
 A.Date.parse = function(pattern, text, opt_date) {
     if (arguments.length === 1) {
-        return YDateParser(arguments[0]);
+        return yDateParser(arguments[0]);
     }
 
     A.Date.dateparser.compilePattern(pattern);

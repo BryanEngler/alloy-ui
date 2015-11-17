@@ -5,11 +5,22 @@
  * @submodule aui-scheduler-base-view
  */
 
+var Lang = A.Lang,
+    isBoolean = Lang.isBoolean,
+    isFunction = Lang.isFunction,
+    isString = Lang.isString,
+
+    DateMath = A.DataType.DateMath,
+
+    CSS_SCHEDULER_VIEW_NOSCROLL = A.getClassName('scheduler-view', 'noscroll'),
+    CSS_SCHEDULER_VIEW_SCROLLABLE = A.getClassName('scheduler-view', 'scrollable');
+
 /**
  * A base class for `SchedulerView`.
  *
  * @class A.SchedulerView
- * @uses A.WidgetStdMod
+ * @extends A.Component
+ * @uses WidgetStdMod
  * @param {Object} config Object literal specifying widget configuration
  *     properties.
  * @constructor
@@ -23,7 +34,7 @@ var SchedulerView = A.Component.create({
      * @type {String}
      * @static
      */
-    NAME: SCHEDULER_VIEW,
+    NAME: 'scheduler-view',
 
     /**
      * Static property used to define the augmented classes.
@@ -52,7 +63,7 @@ var SchedulerView = A.Component.create({
          * @type {String}
          */
         bodyContent: {
-            value: _EMPTY_STR
+            value: ''
         },
 
         /**
@@ -63,7 +74,7 @@ var SchedulerView = A.Component.create({
          */
         filterFn: {
             validator: isFunction,
-            value: function(evt) {
+            value: function() {
                 return true;
             }
         },
@@ -76,7 +87,25 @@ var SchedulerView = A.Component.create({
          * @type {Number}
          */
         height: {
-            value: 600
+            value: 650
+        },
+
+        /**
+         * Determines the initial scroll behavior for this view. If false,
+         * there will be no scrolling when the view is first shown. When set
+         * to true the view will scroll to the current date and time. If set
+         * to a date the view will scroll to that date instead.
+         *
+         * @attribute initialScroll
+         * @default true
+         * @type {Boolean | Date}
+         */
+        initialScroll: {
+            validator: function(val) {
+                return A.Lang.isBoolean(val) || A.Lang.isDate(val);
+            },
+            value: true,
+            writeOnce: 'initOnly'
         },
 
         /**
@@ -100,7 +129,7 @@ var SchedulerView = A.Component.create({
          * @type {String}
          */
         name: {
-            value: _EMPTY_STR,
+            value: '',
             validator: isString
         },
 
@@ -114,11 +143,11 @@ var SchedulerView = A.Component.create({
         navigationDateFormatter: {
             value: function(date) {
                 var instance = this;
-                var scheduler = instance.get(SCHEDULER);
+                var scheduler = instance.get('scheduler');
 
                 return A.DataType.Date.format(date, {
                     format: '%A, %d %B, %Y',
-                    locale: scheduler.get(LOCALE)
+                    locale: scheduler.get('locale')
                 });
             },
             validator: isFunction
@@ -177,6 +206,7 @@ var SchedulerView = A.Component.create({
          * @attribute triggerNode
          */
         triggerNode: {
+            getter: '_getTriggerNode',
             setter: A.one
         },
 
@@ -192,8 +222,6 @@ var SchedulerView = A.Component.create({
         }
     },
 
-    AUGMENTS: [A.WidgetStdMod],
-
     /**
      * Static property used to define the attributes
      * for the bindUI lifecycle phase.
@@ -202,7 +230,7 @@ var SchedulerView = A.Component.create({
      * @type {Array}
      * @static
      */
-    BIND_UI_ATTRS: [SCROLLABLE],
+    BIND_UI_ATTRS: ['scrollable'],
 
     prototype: {
 
@@ -214,9 +242,8 @@ var SchedulerView = A.Component.create({
          * @protected
          */
         initializer: function() {
-            var instance = this;
-
-            instance.after('render', instance._afterRender);
+            this.after('render', this._afterRender);
+            A.after(this._afterBasePlotEvents, this, 'plotEvents');
         },
 
         /**
@@ -240,8 +267,6 @@ var SchedulerView = A.Component.create({
          * @return {Date}
          */
         getAdjustedViewDate: function(date) {
-            var instance = this;
-
             return DateMath.toMidnight(date);
         },
 
@@ -252,6 +277,20 @@ var SchedulerView = A.Component.create({
          * @method flushViewCache
          */
         flushViewCache: function() {},
+
+        /**
+         * Returns the date interval in which this view shows events for.
+         *
+         * @method getDateInterval
+         * @return {Object} Object with 2 keys: startDate and endDate. Undefined
+         *   keys are interpreted as unlimited sides of the interval.
+         */
+        getDateInterval: function() {
+            return {
+                endDate: DateMath.toLastHour(DateMath.subtract(this.getNextDate(), DateMath.DAY, 1)),
+                startDate: this.getAdjustedViewDate(this.get('scheduler').get('viewDate'))
+            };
+        },
 
         /**
          * Returns the value of the date that follows the view's current
@@ -291,8 +330,6 @@ var SchedulerView = A.Component.create({
          * @return {Date}
          */
         limitDate: function(date, maxDate) {
-            var instance = this;
-
             if (DateMath.after(date, maxDate)) {
                 date = DateMath.clone(maxDate);
             }
@@ -308,6 +345,13 @@ var SchedulerView = A.Component.create({
         plotEvents: function() {},
 
         /**
+         * Scrolls to given date.
+         *
+         * @method scrollToDate
+         */
+        scrollToDate: function() {},
+
+        /**
          * Sync `SchedulerView` StdContent.
          *
          * @method syncStdContent
@@ -320,7 +364,7 @@ var SchedulerView = A.Component.create({
          * @method syncEventUI
          * @param {A.SchedulerEvent} evt A `Scheduler` event.
          */
-        syncEventUI: function(evt) {},
+        syncEventUI: function() {},
 
         /**
          * Sets `date` on the UI.
@@ -331,19 +375,42 @@ var SchedulerView = A.Component.create({
         _uiSetDate: function() {},
 
         /**
+         * Syncs the UI according to the value of the `initialScroll` attribute.
+         *
+         * @method _afterBasePlotEvents
+         */
+        _afterBasePlotEvents: function() {
+            var initialScroll = this.get('initialScroll');
+
+            if (initialScroll !== false && this.get('rendered') && this.get('visible') && !this._scrollDone) {
+                this.scrollToDate(initialScroll === true ? new Date() : initialScroll);
+                this._scrollDone = true;
+            }
+        },
+
+        /**
          * Handles `render` events.
          *
          * @method _afterRender
          * @param {EventFacade} event
          * @protected
          */
-        _afterRender: function(event) {
+        _afterRender: function() {
             var instance = this;
-            var scheduler = instance.get(SCHEDULER);
 
             instance._uiSetScrollable(
-                instance.get(SCROLLABLE)
+                instance.get('scrollable')
             );
+        },
+
+        /**
+         * Returns the `Node` that triggers.
+         *
+         * @method _getTriggerNode
+         * @protected
+         */
+        _getTriggerNode: function() {
+            return this.get('scheduler').getViewTriggerNode(this);
         },
 
         /**
@@ -356,7 +423,7 @@ var SchedulerView = A.Component.create({
          */
         _setScheduler: function(val) {
             var instance = this;
-            var scheduler = instance.get(SCHEDULER);
+            var scheduler = instance.get('scheduler');
 
             if (scheduler) {
                 instance.removeTarget(scheduler);

@@ -9,31 +9,12 @@ var Lang = A.Lang,
 
     StdMod = A.WidgetStdMod,
 
-    OWNER_DOCUMENT = 'ownerDocument',
-
     getClassName = A.getClassName,
-
-    _DOT = '.',
-    _EMPTY = '',
-    _SPACE = ' ',
-
-    BR = 'br',
-    CLICK = 'click',
-    DESTROY_ON_HIDE = 'destroyOnHide',
-    DRAGGABLE = 'draggable',
-    DRAGGABLE_CHANGE = 'draggableChange',
-    FILL_HEIGHT = 'fillHeight',
-    HEIGHT = 'height',
-    MODAL = 'modal',
-    MOUSEMOVE = 'mousemove',
-    RESIZABLE = 'resizable',
-    RESIZABLE_CHANGE = 'resizableChange',
-    VISIBLE_CHANGE = 'visibleChange',
-    WIDTH = 'width',
 
     CSS_MODAL_BD = getClassName('modal-body'),
     CSS_MODAL_FT = getClassName('modal-footer'),
-    CSS_MODAL_HD = getClassName('modal-header');
+    CSS_MODAL_HD = getClassName('modal-header'),
+    CSS_MODAL_OPEN = getClassName('modal-open');
 
 /**
  * A base class for Modal.
@@ -51,18 +32,23 @@ var Lang = A.Lang,
  * @include http://alloyui.com/examples/modal/basic-markup.html
  * @include http://alloyui.com/examples/modal/basic.js
  */
-A.Modal = A.Base.create(MODAL, A.Widget, [
+A.Modal = A.Base.create('modal', A.Widget, [
     A.WidgetCssClass,
     A.WidgetPosition,
     A.WidgetStdMod,
     A.WidgetToggle,
     A.WidgetAutohide,
     A.WidgetToolbars,
-    A.WidgetModality,
     A.WidgetPositionAlign,
     A.WidgetPositionConstrain,
-    A.WidgetStack
+    A.WidgetStack,
+
+    // WidgetModality needs to be added after all WidgetPosition augmentations
+    // to prevent it from focusing the modal before it's properly positioned,
+    // which would cause the viewport to scroll to the top.
+    A.WidgetModality
 ], {
+    CONTENT_TEMPLATE: '<div class="modal-content"></div>',
 
     /**
      * Construction logic executed during Modal instantiation. Lifecycle.
@@ -75,14 +61,14 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
             eventHandles;
 
         eventHandles = [
-            A.after(instance._afterFillHeight, instance, FILL_HEIGHT),
-            instance.after('resize:end', A.bind(instance._syncResizeDimensions, instance)),
-            instance.after(DRAGGABLE_CHANGE, instance._afterDraggableChange),
-            instance.after(RESIZABLE_CHANGE, instance._afterResizableChange),
-            instance.after(VISIBLE_CHANGE, instance._afterVisibleChange)
+            A.after(instance._afterFillHeight, instance, 'fillHeight'),
+            A.after('windowresize', A.bind('_afterWindowResize', instance)),
+            instance.after('render', instance._afterRender),
+            instance.after('draggableChange', instance._afterDraggableChange),
+            instance.after('visibleChange', instance._afterVisibleChange)
         ];
 
-        instance._applyPlugin(instance._onUserInitInteraction);
+        instance._applyPlugin(instance._plugDrag);
 
         instance._eventHandles = eventHandles;
     },
@@ -101,6 +87,8 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
         if (instance._userInteractionHandle) {
             instance._userInteractionHandle.detach();
         }
+
+        A.all('body,html').removeClass(CSS_MODAL_OPEN);
     },
 
     /**
@@ -131,7 +119,7 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
     _afterFillHeight: function() {
         var instance = this;
 
-        instance._fillMaxHeight(instance.get(HEIGHT));
+        instance._fillMaxHeight(instance.get('height'));
     },
 
     /**
@@ -152,21 +140,9 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
         }
     },
 
-    /**
-     * Fire after resize changes.
-     *
-     * @method _afterResizableChange
-     * @param event
-     * @protected
-     */
-    _afterResizableChange: function(event) {
-        var instance = this;
-
-        if (event.newVal) {
-            instance._applyPlugin(instance._plugResize);
-        }
-        else {
-            instance.unplug(A.Plugin.Resize);
+    _afterRender: function() {
+        if (this.get('visible')) {
+            A.all('body,html').addClass(CSS_MODAL_OPEN);
         }
     },
 
@@ -180,8 +156,24 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
     _afterVisibleChange: function(event) {
         var instance = this;
 
-        if (!event.newVal && instance.get(DESTROY_ON_HIDE)) {
+        if (!event.newVal && instance.get('destroyOnHide')) {
             A.soon(A.bind('destroy', instance));
+        }
+
+        A.all('body,html').toggleClass(CSS_MODAL_OPEN, event.newVal);
+    },
+
+    /**
+     * Fires after the 'windowresize' event.
+     *
+     * @method _afterWindowResize
+     * @param event
+     */
+    _afterWindowResize: function() {
+        var instance = this;
+
+        if (instance.get('centered')) {
+            instance.align();
         }
     },
 
@@ -200,7 +192,7 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
         }
         else if (!instance._userInteractionHandle) {
             instance._userInteractionHandle = instance.once(
-                [CLICK, MOUSEMOVE], instance._onUserInitInteraction, instance);
+                ['click', 'mousemove'], instance._onUserInitInteraction, instance);
         }
     },
 
@@ -213,7 +205,7 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
      */
     _fillMaxHeight: function(height) {
         var instance = this,
-            fillHeight = instance.get(FILL_HEIGHT),
+            fillHeight = instance.get('fillHeight'),
             node = instance.getStdModNode(fillHeight, true);
 
         if (node) {
@@ -229,44 +221,22 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
      * @protected
      */
     _getStdModTemplate: function(section) {
-        return A.Node.create(A.Modal.TEMPLATES[section], this._stdModNode.get(OWNER_DOCUMENT));
+        return A.Node.create(A.Modal.TEMPLATES[section], this._stdModNode.get('ownerDocument'));
     },
 
     /**
-     * Fire before resizing to the correct dimensions.
-     *
-     * @method _beforeResizeCorrectDimensions
-     * @param event
-     * @protected
-     */
-    _beforeResizeCorrectDimensions: function() {
-        var instance = this;
-
-        if (instance.resize.proxy) {
-            return new A.Do.Prevent();
-        }
-    },
-
-    /**
-     * Plug draggable/resizable if enable.
+     * Plug draggable and detach user interaction handle.
      *
      * @method _onUserInitInteraction
      * @protected
      */
     _onUserInitInteraction: function() {
-        var instance = this,
-            draggable = instance.get(DRAGGABLE),
-            resizable = instance.get(RESIZABLE);
+        var instance = this;
 
+        instance._plugDrag();
+
+        instance._userInteractionHandle.detach();
         instance._userInteractionHandle = null;
-
-        if (draggable) {
-            instance._plugDrag();
-        }
-
-        if (resizable) {
-            instance._plugResize();
-        }
     },
 
     /**
@@ -277,39 +247,11 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
      */
     _plugDrag: function() {
         var instance = this,
-            draggable = instance.get(DRAGGABLE);
+            draggable = instance.get('draggable');
 
-        instance.plug(A.Plugin.Drag, instance._addBubbleTargets(draggable));
-    },
-
-    /**
-     * Plug the resize Plugin
-     *
-     * @method _plugResize
-     * @protected
-     */
-    _plugResize: function() {
-        var instance = this,
-            resizable = instance.get(RESIZABLE);
-
-        instance.plug(A.Plugin.Resize, instance._addBubbleTargets(resizable));
-
-        A.before(instance._beforeResizeCorrectDimensions, instance.resize, '_correctDimensions', instance);
-    },
-
-    /**
-     * Sync width/height dimensions on resize.
-     *
-     * @method _syncResizeDimensions
-     * @param event
-     * @protected
-     */
-    _syncResizeDimensions: function(event) {
-        var instance = this,
-            resize = event.info;
-
-        instance.set(WIDTH, resize.offsetWidth);
-        instance.set(HEIGHT, resize.offsetHeight);
+        if (draggable) {
+            instance.plug(A.Plugin.Drag, instance._addBubbleTargets(draggable));
+        }
     }
 }, {
 
@@ -320,7 +262,7 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
      * @type String
      * @static
      */
-    CSS_PREFIX: getClassName(MODAL),
+    CSS_PREFIX: getClassName('modal-dialog'),
 
     /**
      * Static property used to define the default attribute
@@ -344,7 +286,7 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
          * @type String
          */
         bodyContent: {
-            value: _EMPTY
+            value: ''
         },
 
         /**
@@ -368,25 +310,12 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
          */
         draggable: {
             value: {
-                handles: [_DOT + CSS_MODAL_HD],
+                handles: ['.' + CSS_MODAL_HD],
                 plugins: [
                     {
                         fn: A.Plugin.DDConstrained
                     }
                 ]
-            }
-        },
-
-        /**
-         * Determine if Modal should be resizable or not.
-         *
-         * @attribute resizable
-         * @type Object
-         * @writeOnce
-         */
-        resizable: {
-            value: {
-                handles: BR
             }
         },
 
@@ -404,7 +333,8 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
                     header: [
                         {
                             cssClass: 'close',
-                            label: '\u00D7',
+                            discardDefaultButtonCssClasses: true,
+                            labelHTML: '<span> \u00D7 </span>',
                             on: {
                                 click: function(event) {
                                     instance.hide();
@@ -417,6 +347,18 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
                     ]
                 };
             }
+        },
+
+        /**
+         * Determine the css classes of Modal's sections.
+         *
+         * @attribute toolbarCssClass
+         * @type Object
+         */
+        toolbarCssClass: {
+            value: {
+                header: 'pull-right'
+            }
         }
     },
 
@@ -428,8 +370,8 @@ A.Modal = A.Base.create(MODAL, A.Widget, [
      * @static
      */
     TEMPLATES: {
-        header: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.HEADER] + _SPACE + CSS_MODAL_HD + '"></div>',
-        body: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.BODY] + _SPACE + CSS_MODAL_BD + '"></div>',
-        footer: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.FOOTER] + _SPACE + CSS_MODAL_FT + '"></div>'
+        header: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.HEADER] + ' ' + CSS_MODAL_HD + '"></div>',
+        body: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.BODY] + ' ' + CSS_MODAL_BD + '"></div>',
+        footer: '<div class="' + StdMod.SECTION_CLASS_NAMES[StdMod.FOOTER] + ' ' + CSS_MODAL_FT + '"></div>'
     }
 });

@@ -15,16 +15,25 @@ YUI.add('aui-tabview-tests', function(Y) {
     myOtherTabView = new Y.TabView({
         children: [
             {
-                content: '<br><p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Accusamus dicta aspernatur beatae fuga neque cupiditate laudantium itaque pariatur deleniti tenetur modi voluptatem animi sunt eligendi nisi corporis expedita quaerat facilis.</p>',
+                content: '<br><p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. ' +
+                    'Accusamus dicta aspernatur beatae fuga neque cupiditate laudantium itaque ' +
+                    'pariatur deleniti tenetur modi voluptatem animi sunt eligendi nisi corporis ' +
+                    'expedita quaerat facilis.</p>',
                 label: 'Tab #1'
             },
             {
-                content: '<br><p>Doloremque beatae rem voluptate nulla perspiciatis atque laudantium nihil impedit molestiae fuga veritatis quibusdam nam maiores aliquid. Deserunt dolorum quas temporibus enim ex nihil nemo perspiciatis. Nisi deserunt rem id pariatur in nostrum?</p>',
+                content: '<br><p>Doloremque beatae rem voluptate nulla perspiciatis atque laudantium ' +
+                    'nihil impedit molestiae fuga veritatis quibusdam nam maiores aliquid. Deserunt ' +
+                    'dolorum quas temporibus enim ex nihil nemo perspiciatis. Nisi deserunt rem id ' +
+                    'pariatur in nostrum?</p>',
                 disabled: true,
                 label: 'Tab #2'
             },
             {
-                content: '<br><p>Aliquid ipsum asperiores alias temporibus autem impedit soluta ut id iure explicabo veritatis consectetur debitis eaque recusandae odit quas nobis maxime saepe. Incidunt amet obcaecati. Ducimus soluta unde repellat laboriosam fuga modi rem itaque!</p>',
+                content: '<br><p>Aliquid ipsum asperiores alias temporibus autem impedit soluta ut id ' +
+                    'iure explicabo veritatis consectetur debitis eaque recusandae odit quas nobis ' +
+                    'maxime saepe. Incidunt amet obcaecati. Ducimus soluta unde repellat laboriosam ' +
+                    'fuga modi rem itaque!</p>',
                 label: 'Tab #3'
             }
         ],
@@ -40,7 +49,7 @@ YUI.add('aui-tabview-tests', function(Y) {
         name: 'Tabview Tests',
 
         /*
-         * @tests AUI-976
+         * Tests: AUI-976
          */
         'verify active tab instantiated from markup': function() {
             var activeTab = myTabView.getActiveTab(),
@@ -50,7 +59,7 @@ YUI.add('aui-tabview-tests', function(Y) {
         },
 
         /*
-         * @tests AUI-976
+         * Tests: AUI-976
          */
         'verify disabled tab instantiated from markup': function() {
             var disabledTabs = [],
@@ -67,7 +76,7 @@ YUI.add('aui-tabview-tests', function(Y) {
         },
 
         /*
-         * @tests AUI-976
+         * Tests: AUI-976
          */
         'verify active tab instantiated from script': function() {
             var activeTab = myOtherTabView.getActiveTab(),
@@ -77,7 +86,7 @@ YUI.add('aui-tabview-tests', function(Y) {
         },
 
         /*
-         * @tests AUI-976
+         * Tests: AUI-976
          */
         'verify disabled tab instantiated from script': function() {
             var disabledTabs = [],

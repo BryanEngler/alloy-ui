@@ -5,22 +5,7 @@
  */
 
 var Lang = A.Lang,
-    DOC = A.config.doc,
-
-    _TOOLTIP_DELEGATE = 'tooltip-delegate',
-
-    ALIGN = 'align',
-    CONTAINER = 'container',
-    DURATION = 'duration',
-    FORMATTER = 'formatter',
-    MOUSEENTER = 'mouseenter',
-    MOUSELEAVE = 'mouseleave',
-    OPACITY = 'opacity',
-    POSITION = 'position',
-    TRIGGER = 'trigger',
-    TRIGGER_HIDE_EVENT = 'triggerHideEvent',
-    TRIGGER_SHOW_EVENT = 'triggerShowEvent',
-    Z_INDEX = 'zIndex';
+    DOC = A.config.doc;
 
 /**
  * A base class for Toggler Delegate.
@@ -33,7 +18,7 @@ var Lang = A.Lang,
  *     properties.
  * @constructor
  */
-A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
+A.TooltipDelegate = A.Base.create('tooltip-delegate', A.Base, [], {
     items: null,
 
     tooltip: null,
@@ -74,15 +59,15 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
         var instance = this,
             container,
             trigger;
-        container = instance.get(CONTAINER);
-        trigger = instance.get(TRIGGER);
+        container = instance.get('container');
+        trigger = instance.get('trigger');
 
         instance._eventHandles.push(
             container.delegate(
-                instance.get(TRIGGER_SHOW_EVENT),
+                instance.get('triggerShowEvent'),
                 A.bind(instance._onUserShowInteraction, instance), trigger),
             container.delegate(
-                instance.get(TRIGGER_HIDE_EVENT),
+                instance.get('triggerHideEvent'),
                 A.bind(instance._onUserHideInteraction, instance), trigger)
         );
     },
@@ -93,14 +78,16 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
 
         if (!tooltip) {
             tooltip = instance.tooltip = new A.Tooltip({
-                align: instance.get(ALIGN),
+                align: instance.get('align'),
                 bindDOMEvents: false,
-                duration: instance.get(DURATION),
-                formatter: instance.get(FORMATTER),
-                opacity: instance.get(OPACITY),
-                position: instance.get(POSITION),
+                cssClass: instance.get('cssClass'),
+                duration: instance.get('duration'),
+                formatter: instance.get('formatter'),
+                opacity: instance.get('opacity'),
+                position: instance.get('position'),
+                html: instance.get('html'),
                 visible: false,
-                zIndex: instance.get(Z_INDEX)
+                zIndex: instance.get('zIndex')
             });
         }
 
@@ -131,7 +118,7 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
 
         trigger = event.currentTarget;
 
-        instance.getTooltip().render().set(TRIGGER, trigger).show();
+        instance.getTooltip().set('trigger', trigger).render().show();
     }
 }, {
     /**
@@ -166,6 +153,15 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
         },
 
         /**
+         * The CSS class applied to the tooltip.
+         *
+         * @attribute cssClass
+         */
+        cssClass: {
+            value: null
+        },
+
+        /**
          * Determine the duration of the tooltip animation.
          *
          * @attribute duration
@@ -178,6 +174,18 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
         },
 
         formatter: A.Tooltip.ATTRS.formatter,
+
+        /**
+         * Determines if the tooltip allows arbitary HTML or is plain text.
+         *
+         * @attribute html
+         * @default false
+         * @type Boolean
+         */
+        html: {
+            value: false,
+            validator: Lang.isBoolean
+        },
 
         /**
          * Determine the opacity of the tooltip.
@@ -204,7 +212,7 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
          */
         triggerHideEvent: {
             validator: Lang.isString,
-            value: MOUSELEAVE,
+            value: 'mouseleave',
             writeOnce: true
         },
 
@@ -217,7 +225,7 @@ A.TooltipDelegate = A.Base.create(_TOOLTIP_DELEGATE, A.Base, [], {
          */
         triggerShowEvent: {
             validator: Lang.isString,
-            value: MOUSEENTER,
+            value: 'mouseenter',
             writeOnce: true
         },
 
