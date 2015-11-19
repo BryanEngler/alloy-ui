@@ -233,6 +233,51 @@ YUI.add('aui-form-validator-tests', function(Y) {
             Y.Assert.isTrue(validator.hasErrors());
         },
 
+        /*
+         * Check if validator defaults to 'required' error message when applicable
+         * @tests AUI-2043
+         */
+        'test required error message': function() {
+            var form = Y.Node.create(
+                    '<form><input name="emailAddress" id="emailAddress" type="text"></form>'),
+                input = form.one('input'),
+                validator;
+
+            validator = new Y.FormValidator({
+                boundingBox: form,
+                fieldStrings: {
+                    emailAddress: {
+                        email: 'Please enter a valid email address.',
+                        required: 'This field is required.'
+                    }
+                },
+                rules: {
+                    emailAddress: {
+                        email: true,
+                        required: true
+                    }
+                },
+                showMessages: true,
+                showAllMessages: false
+            });
+
+            var errorMessage;
+
+            form.simulate('submit');
+
+            errorMessage = validator._stackErrorContainers.emailAddress._node.innerText;
+
+            Y.Assert.isTrue(errorMessage === 'This field is required.');
+
+            input.attr('value', '         ');
+
+            form.simulate('submit');
+
+            errorMessage = validator._stackErrorContainers.emailAddress._node.innerText;
+
+            Y.Assert.isTrue(errorMessage === 'This field is required.');
+        },
+
         _assertValidatorNextLabel: function(input) {
             var inputNode,
                 textNode;
